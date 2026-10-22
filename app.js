@@ -1,0 +1,1229 @@
+const appData = window.APP_DATA;
+const bundledContent = JSON.parse(JSON.stringify({ questions: appData.questions, yeshivot: appData.yeshivot }));
+const supabaseConfig = window.SUPABASE_CONFIG || {};
+const hasSupabaseConfig = Boolean(
+  window.supabase?.createClient
+  && supabaseConfig.url
+  && supabaseConfig.anonKey
+  && !supabaseConfig.url.includes('YOUR_PROJECT')
+  && !supabaseConfig.anonKey.includes('YOUR_SUPABASE')
+);
+const supabaseClient = hasSupabaseConfig
+  ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey)
+  : null;
+
+const state = {
+  currentIndex: 0,
+  answers: {},
+  completed: false,
+  started: false,
+  adminAuthenticated: false,
+  adminTab: 'questions',
+  adminEmail: '',
+  pendingRequests: [],
+  cloudMessage: ''
+};
+
+const root = document.getElementById('app');
+
+async function loadCloudContent() {
+  if (!supabaseClient) return;
+  const { data, error } = await supabaseClient
+    .from('site_content')
+    .select('questions, yeshivot')
+    .eq('id', 'main')
+    .maybeSingle();
+
+  if (error) {
+    console.error('לא ניתן לטעון את תוכן האתר מהענן.', error);
+    return;
+  }
+
+  if (data?.questions && data?.yeshivot) {
+    appData.questions = data.questions;
+    appData.yeshivot = data.yeshivot;
+  }
+}
+
+async function saveCloudContent() {
+  if (!supabaseClient) throw new Error('יש להגדיר חיבור Supabase לפני שמירת שינויים.');
+  const { error } = await supabaseClient.from('site_content').upsert({
+    id: 'main',
+    questions: appData.questions,
+    yeshivot: appData.yeshivot,
+    updated_at: new Date().toISOString(),
+    updated_by: state.adminUserId || null
+  });
+  if (error) throw error;
+}
+
+async function loadPendingRequests() {
+  if (!supabaseClient || !state.adminAuthenticated) return;
+  const { data, error } = await supabaseClient
+    .from('submissions')
+    .select('id, yeshiva_name, request_type, notes, answers, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  state.pendingRequests = data.map((row) => ({
+    id: row.id,
+    yeshivaName: row.yeshiva_name,
+    type: row.request_type,
+    details: row.notes || '',
+    answers: row.answers,
+    submittedAt: row.created_at
+  }));
+}
+
+const TAG_LABELS = {
+  gemara: 'גמרא',
+  gavoa: 'גובה',
+  hesder: 'הסדר',
+  intellectual_open: 'פתיחות מחשבתית',
+  academic_integration: 'שילוב אקדמי',
+  community: 'קהילה',
+  academic: 'אקדמיה',
+  modern_israel: 'ציונות מודרנית',
+  serious_learning: 'לימוד רציני',
+  leadership: 'מנהיגות',
+  torah_values: 'ערכי תורה',
+  warm_thinking: 'חשיבה חמה',
+  kollel: 'כולל',
+  mishpacha: 'משפחה',
+  classical_haredi: 'חרדי קלאסי',
+  yeshiva_ketana: 'ישיבה קטנה',
+  traditional: 'מסורתי',
+  formal: 'מסודר',
+  quiet: 'שקט',
+  discussion: 'דיון',
+  modern: 'מודרני',
+  purpose: 'מטרה',
+  academic_integration: 'שילוב אקדמי',
+  community: 'קהילה',
+  warm_thinking: 'חשיבה חמה',
+  kollel: 'כולל',
+  mishna: 'משנה',
+  halacha: 'הלכה',
+  text_study: 'לימוד טקסט',
+  national: 'לאומי'
+};
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+}
+
+function formatTagLabel(tag) {
+  return TAG_LABELS[tag] || tag.replace(/_/g, ' ');
+}
+
+function getShareUrl() {
+  return window.location.href.split('#')[0];
+}
+
+async function shareContent(title, text) {
+  const message = `${text}\n${getShareUrl()}`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text: message });
+      return 'השיתוף נפתח.';
+    }
+
+    await navigator.clipboard.writeText(message);
+    return 'הקישור הועתק ללוח.';
+  } catch (error) {
+    if (error.name === 'AbortError') return '';
+    return 'לא ניתן לשתף כרגע. אפשר להעתיק את כתובת האתר משורת הכתובת.';
+  }
+}
+
+function showNotice(message) {
+  if (!message) return;
+  const notice = document.createElement('div');
+  notice.className = 'notice';
+  notice.setAttribute('role', 'status');
+  notice.textContent = message;
+  root.append(notice);
+  window.setTimeout(() => notice.remove(), 3500);
+}
+
+function renderWelcome() {
+  root.innerHTML = `
+    <section class="welcome-panel">
+      <span class="welcome-kicker">מסע קטן, בחירה משמעותית</span>
+      <h2>מוצאים את המקום<br />שמתאים לדרך שלך</h2>
+      <p>ענה על כמה שאלות קצרות על הלימוד, האווירה והכיוון שלך. בסוף תקבל שלוש ישיבות שכדאי לך להכיר.</p>
+      <div class="welcome-actions">
+        <button class="nav-button primary start-button" type="button" id="start-button">התחל</button>
+        <button class="nav-button secondary share-button" type="button" id="share-app-button" aria-label="שתף את הכלי" title="שתף">
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+        </button>
+      </div>
+    </section>
+  `;
+
+  document.getElementById('start-button').addEventListener('click', () => {
+    state.started = true;
+    render();
+  });
+  document.getElementById('share-app-button').addEventListener('click', async () => {
+    showNotice(await shareContent(appData.app.title, 'כלי קצר למציאת ישיבה שמתאימה לסגנון הלימוד ולערכים שלך.'));
+  });
+}
+
+function buildQuestionMarkup(question, index) {
+  const allQuestions = appData.questions;
+  const selectedOptionId = state.answers[question.id];
+  const progressPercent = (index / allQuestions.length) * 100;
+
+  return `
+    <div class="question-panel">
+      <div class="progress-wrap" aria-label="התקדמות השאלון">
+        <div class="progress-meta">
+          <span>שאלה ${index + 1} מתוך ${allQuestions.length}</span>
+          <span>${Math.round(progressPercent)}%</span>
+        </div>
+        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progressPercent)}">
+          <div class="progress-fill" style="width: ${progressPercent}%"></div>
+        </div>
+      </div>
+
+      <h2 class="question-heading">${escapeHtml(question.text)}</h2>
+
+      <div class="option-grid" role="list">
+        ${question.options
+          .map(
+            (option) => `
+              <button
+                class="option-button ${selectedOptionId === option.id ? 'selected' : ''}"
+                type="button"
+                data-question-id="${escapeHtml(question.id)}"
+                data-option-id="${escapeHtml(option.id)}"
+                aria-pressed="${selectedOptionId === option.id}"
+              >
+                <strong>${escapeHtml(option.label)}</strong>
+              </button>
+            `
+          )
+          .join('')}
+      </div>
+
+      <div class="controls">
+        <button class="nav-button secondary" type="button" id="prev-button" aria-label="חזרה לשאלה הקודמת" title="חזרה" ${index === 0 ? 'disabled' : ''}>
+          <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+        <button class="nav-button primary" type="button" id="next-button" aria-label="לשאלה הבאה" title="הבא" ${!selectedOptionId ? 'disabled' : ''}>
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function getSelectedTags() {
+  const tags = new Set();
+
+  appData.questions.forEach((question) => {
+    const optionId = state.answers[question.id];
+    if (!optionId) return;
+
+    const selectedOption = question.options.find((option) => option.id === optionId);
+    if (!selectedOption) return;
+
+    selectedOption.tags.forEach((tag) => tags.add(tag));
+  });
+
+  return tags;
+}
+
+function classifyMachanaimBoost(tags) {
+  const machanaim = appData.yeshivot.find((yeshiva) => yeshiva.id === 'machanaim');
+  if (!machanaim?.boostRules?.enabled) return 0;
+
+  const baseline = machanaim.boostRules.baselineTags || [];
+  const avoidance = machanaim.boostRules.avoidanceTags || [];
+
+  const baselineMatches = baseline.filter((tag) => tags.has(tag)).length;
+  const avoidanceMatch = avoidance.some((tag) => tags.has(tag));
+
+  if (avoidanceMatch) {
+    return 0;
+  }
+
+  return baselineMatches >= machanaim.boostRules.minMatches
+    ? machanaim.boostRules.bonus
+    : 0;
+}
+
+function computeScores() {
+  const selectedTags = getSelectedTags();
+  const machanaimBoost = classifyMachanaimBoost(selectedTags);
+
+  return appData.yeshivot
+    .map((yeshiva) => {
+      let weightedMatch = 0;
+      const maxProfileWeight = Object.values(yeshiva.profileTags).reduce((sum, weight) => sum + weight, 0);
+
+      Object.entries(yeshiva.profileTags).forEach(([tag, weight]) => {
+        if (selectedTags.has(tag)) {
+          weightedMatch += weight;
+        }
+      });
+
+      const normalizedScore = maxProfileWeight > 0
+        ? Math.min(100, (weightedMatch / maxProfileWeight) * 100)
+        : 0;
+
+      return {
+        ...yeshiva,
+        score: Number(Math.min(100, normalizedScore + (yeshiva.id === 'machanaim' ? machanaimBoost : 0)).toFixed(1))
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+function renderResults() {
+  const results = computeScores();
+  const resultsShareText = [
+    ...results.map((yeshiva, index) => `${index + 1}. ${yeshiva.name}, ${Math.round(yeshiva.score)}%`),
+    '',
+    'בדוק מה תהיה הישיבה שלך!'
+  ].join('\n');
+
+  root.innerHTML = `
+    <section class="results-panel">
+      <div class="results-header">
+        <h2>ההתאמות הטובות ביותר</h2>
+        <p>על פי סגנון הלימוד, הערכים והיעדים שלך.</p>
+      </div>
+
+      <div class="top-three">
+        ${results
+          .map(
+            (yeshiva, index) => `
+              <article class="result-card rank-${index + 1}">
+                <div class="result-rank">#${index + 1}</div>
+                <h3>${escapeHtml(yeshiva.name)}</h3>
+                <p class="result-tagline">${escapeHtml(yeshiva.tagline)}</p>
+                <p class="result-summary">${escapeHtml(yeshiva.matchSummary)}</p>
+
+                <div class="result-score">
+                  <span class="score-label">התאמה</span>
+                  <span class="score-value">${Math.round(yeshiva.score)}%</span>
+                </div>
+
+                <div class="result-meta">
+                  ${
+                    Object.entries(yeshiva.profileTags)
+                      .filter(([_, weight]) => weight >= 2.4)
+                      .slice(0, 3)
+                      .map(([tag]) => `<span class="meta-pill">${escapeHtml(formatTagLabel(tag))}</span>`)
+                      .join('')
+                  }
+                </div>
+              </article>
+            `
+          )
+          .join('')}
+      </div>
+
+      <div class="results-actions">
+        <button class="secondary-action-button" type="button" id="share-results-button" aria-label="שתף את התוצאות"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>שתף את התוצאות</button>
+        <button class="secondary-action-button" type="button" id="suggest-yeshiva-button">הצע ישיבה או עדכן פרטים</button>
+        <button class="reset-button" type="button" id="reset-button" aria-label="התחל מחדש" title="התחל מחדש">
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.23-5.19" />
+          </svg>
+        </button>
+      </div>
+    </section>
+  `;
+
+  document.getElementById('share-results-button').addEventListener('click', async () => {
+    showNotice(await shareContent('ההתאמות שלי לישיבה', resultsShareText));
+  });
+  document.getElementById('suggest-yeshiva-button').addEventListener('click', renderFeedbackModal);
+
+  const resetButton = document.getElementById('reset-button');
+  resetButton.addEventListener('click', () => {
+    state.currentIndex = 0;
+    state.answers = {};
+    state.completed = false;
+    state.started = false;
+    render();
+  });
+}
+
+function getSavedRequests() {
+  return state.pendingRequests;
+}
+
+function renderFeedbackModal() {
+  const questionsMarkup = appData.questions.map((question, index) => `
+    <fieldset class="feedback-question">
+      <legend>${index + 1}. ${escapeHtml(question.text)}</legend>
+      <div class="feedback-options">
+        ${question.options.map((option) => `
+          <label class="feedback-option">
+            <input type="radio" name="answer-${escapeHtml(question.id)}" value="${escapeHtml(option.id)}" ${state.answers[question.id] === option.id ? 'checked' : ''} required />
+            <span>${escapeHtml(option.label)}</span>
+          </label>
+        `).join('')}
+      </div>
+    </fieldset>
+  `).join('');
+
+  root.insertAdjacentHTML('beforeend', `
+    <div class="modal-backdrop" id="feedback-modal" role="presentation">
+      <section class="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">המשוב שלך עוזר לנו להשתפר</p>
+            <h2 id="feedback-title">הצעה או עדכון לישיבה</h2>
+          </div>
+          <button class="icon-button" type="button" id="close-feedback" aria-label="סגירה">×</button>
+        </div>
+        <p class="modal-intro">התשובות שסימנת כבר מסומנות. אפשר לעבור עליהן ולשנות לפני שליחת ההצעה.</p>
+        <form id="feedback-form">
+          <div class="feedback-fields">
+            <label>סוג הפנייה
+              <select name="requestType" required>
+                <option value="suggest">הצעת ישיבה חדשה</option>
+                <option value="update">עדכון פרטים של ישיבה</option>
+              </select>
+            </label>
+            <label>שם הישיבה
+              <input name="yeshivaName" type="text" required maxlength="120" />
+            </label>
+            <label>הערות למנהל (לא חובה)
+              <textarea name="details" rows="3" maxlength="2000"></textarea>
+            </label>
+          </div>
+          <div class="feedback-question-list">${questionsMarkup}</div>
+          <p class="local-save-note">הפנייה תישלח למערכת ותופיע בלוח הניהול.</p>
+          <div class="modal-actions">
+            <button class="nav-button secondary" type="button" id="cancel-feedback">ביטול</button>
+            <button class="nav-button primary" type="submit">שליחת הצעה</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  `);
+
+  const modal = document.getElementById('feedback-modal');
+  const closeModal = () => modal.remove();
+  document.getElementById('close-feedback').addEventListener('click', closeModal);
+  document.getElementById('cancel-feedback').addEventListener('click', closeModal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+  document.getElementById('feedback-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!supabaseClient) {
+      showNotice('השליחה אינה זמינה כרגע. יש להגדיר חיבור למסד הנתונים.');
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const answers = Object.fromEntries(appData.questions.map((question) => [
+      question.id,
+      formData.get(`answer-${question.id}`)
+    ]));
+    if (Object.values(answers).some((answer) => !answer)) {
+      showNotice('יש לענות על כל השאלות לפני שליחת הפנייה.');
+      return;
+    }
+    const { error } = await supabaseClient.from('submissions').insert({
+      yeshiva_name: formData.get('yeshivaName').trim(),
+      request_type: formData.get('requestType'),
+      notes: String(formData.get('details') || '').trim() || null,
+      answers,
+      status: 'pending'
+    });
+    if (error) {
+      showNotice('שליחת הפנייה נכשלה. נסה שוב מאוחר יותר.');
+      console.error('Submission insert failed.', error);
+      return;
+    }
+
+    modal.innerHTML = `
+      <section class="feedback-modal feedback-success" role="dialog" aria-modal="true" aria-labelledby="feedback-success-title">
+        <span class="success-mark" aria-hidden="true">✓</span>
+        <h2 id="feedback-success-title">תודה על ההצעה</h2>
+        <p>הפנייה נשלחה בהצלחה ותופיע בלוח הניהול.</p>
+        <button class="nav-button primary" type="button" id="finish-feedback">סיום</button>
+      </section>
+    `;
+    document.getElementById('finish-feedback').addEventListener('click', closeModal);
+  });
+}
+
+function renderAdminLogin() {
+  if (!supabaseClient) {
+    root.innerHTML = `
+      <section class="admin-login">
+        <p class="eyebrow">אזור מנהלים</p>
+        <h2>הניהול אינו מוגדר</h2>
+        <p>יש להגדיר Supabase בקובץ הפריסה ולוודא שמסד הנתונים הוקם לפי הוראות README.</p>
+        <a class="text-link" href="#">חזרה לאתר</a>
+      </section>
+    `;
+    return;
+  }
+
+  root.innerHTML = `
+    <section class="admin-login">
+      <p class="eyebrow">אזור מנהלים</p>
+      <h2>כניסה ללוח הניהול</h2>
+      <p>התחבר עם חשבון מנהל מורשה.</p>
+      <form id="admin-login-form">
+        <label for="admin-email">כתובת דוא״ל</label>
+        <input id="admin-email" name="email" type="email" autocomplete="username" required />
+        <label for="admin-password">סיסמה</label>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required />
+        <p class="form-error hidden" id="admin-login-error"></p>
+        <div class="admin-login-actions">
+          <a class="text-link" href="#">חזרה לאתר</a>
+          <button class="nav-button primary" type="submit">כניסה</button>
+        </div>
+      </form>
+    </section>
+  `;
+
+  document.getElementById('admin-login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: formData.get('email'),
+      password: formData.get('password')
+    });
+
+    if (!error && data.user) {
+      const { data: adminRow, error: adminError } = await supabaseClient
+        .from('admins')
+        .select('user_id')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      if (!adminError && adminRow) {
+        state.adminAuthenticated = true;
+        state.adminEmail = data.user.email;
+        state.adminUserId = data.user.id;
+        try {
+          await loadPendingRequests();
+          renderAdminPanel();
+        } catch (loadError) {
+          showAdminError(loadError.message);
+        }
+        return;
+      }
+
+      await supabaseClient.auth.signOut();
+    }
+
+    const errorMessage = error?.message || 'לחשבון זה אין הרשאת מנהל.';
+    const errorElement = document.getElementById('admin-login-error');
+    errorElement.textContent = errorMessage;
+    errorElement.classList.remove('hidden');
+    submitButton.disabled = false;
+  });
+}
+
+function showAdminError(message) {
+  state.adminMessage = message;
+  renderAdminPanel(state.adminTab, message);
+}
+
+function normalizeYeshivaName(name) {
+  return String(name || '').trim().toLocaleLowerCase('he');
+}
+
+function requestMatchesYeshiva(request, yeshiva) {
+  const requestName = normalizeYeshivaName(request.yeshivaName);
+  return [yeshiva.name, yeshiva.shortName, yeshiva.id]
+    .some((name) => normalizeYeshivaName(name) === requestName);
+}
+
+function deriveSubmissionTagWeights(requests) {
+  const submissionWeights = requests.map((request) => {
+    const tagCounts = new Map();
+    let answeredQuestions = 0;
+
+    appData.questions.forEach((question) => {
+      const selectedOption = question.options.find((option) => option.id === request.answers?.[question.id]);
+      if (!selectedOption) return;
+
+      answeredQuestions += 1;
+      new Set(selectedOption.tags).forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1));
+    });
+
+    const weights = new Map();
+    if (answeredQuestions) {
+      tagCounts.forEach((count, tag) => weights.set(tag, (count / answeredQuestions) * 5));
+    }
+    return weights;
+  }).filter((weights) => weights.size);
+
+  const allTags = new Set(submissionWeights.flatMap((weights) => [...weights.keys()]));
+  const averageWeights = {};
+  allTags.forEach((tag) => {
+    const total = submissionWeights.reduce((sum, weights) => sum + (weights.get(tag) || 0), 0);
+    averageWeights[tag] = Math.round((total / submissionWeights.length) * 10) / 10;
+  });
+  return averageWeights;
+}
+
+function applyRequestsToYeshiva(yeshiva, requests) {
+  const updatedWeights = deriveSubmissionTagWeights(requests);
+  return {
+    ...yeshiva,
+    profileTags: { ...yeshiva.profileTags, ...updatedWeights }
+  };
+}
+
+function createYeshivaFromRequest(request, profileTags) {
+  const baseId = normalizeYeshivaName(request.yeshivaName)
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-|-$/g, '') || `suggested-${Date.now()}`;
+  const id = appData.yeshivot.some((yeshiva) => yeshiva.id === baseId)
+    ? `${baseId}-${Date.now()}`
+    : baseId;
+
+  return {
+    id,
+    name: request.yeshivaName,
+    shortName: request.yeshivaName,
+    tagline: 'פרופיל שהוצע על ידי משתמשים',
+    description: request.details || 'ישיבה שהוצעה על ידי משתמשים.',
+    matchSummary: 'הפרופיל נוצר על בסיס הצעת משתמש ויש לבדוק ולאמת את פרטיו.',
+    profileTags,
+    boostRules: {
+      enabled: false,
+      baselineTags: [],
+      avoidanceTags: [],
+      minMatches: 3,
+      bonus: 0
+    }
+  };
+}
+
+async function updateSubmissionStatuses(requestIds, status) {
+  const { error } = await supabaseClient
+    .from('submissions')
+    .update({ status, reviewed_by: state.adminUserId, reviewed_at: new Date().toISOString() })
+    .in('id', requestIds);
+  if (error) throw error;
+  await loadPendingRequests();
+}
+
+async function dismissSubmission(requestId) {
+  try {
+    await updateSubmissionStatuses([requestId], 'dismissed');
+    renderAdminPanel('yeshivot', 'הפנייה נדחתה והוסרה מהתור.');
+  } catch (error) {
+    renderAdminPanel('yeshivot', `לא ניתן לעדכן את הפנייה: ${error.message}`);
+  }
+}
+
+async function applySubmissionGroup(requests) {
+  if (!requests.length) return;
+  const previousYeshivot = appData.yeshivot;
+  const currentYeshivot = state.adminYeshivotDraft || appData.yeshivot;
+  const matchingYeshiva = currentYeshivot.find((yeshiva) => requestMatchesYeshiva(requests[0], yeshiva));
+  const profileTags = deriveSubmissionTagWeights(requests);
+
+  if (matchingYeshiva) {
+    appData.yeshivot = currentYeshivot.map((yeshiva) => yeshiva.id === matchingYeshiva.id
+      ? applyRequestsToYeshiva(yeshiva, requests)
+      : yeshiva);
+  } else {
+    appData.yeshivot = [...currentYeshivot, createYeshivaFromRequest(requests[0], profileTags)];
+  }
+
+  try {
+    validateYeshivot(appData.yeshivot);
+    await saveCloudContent();
+    await updateSubmissionStatuses(requests.map((request) => request.id), 'applied');
+    state.adminYeshivotDraft = null;
+    renderAdminPanel('yeshivot', requests.length > 1
+      ? `עודכנו תגיות הפרופיל לפי ממוצע של ${requests.length} פניות.`
+      : 'הפרופיל עודכן לפי הפנייה.');
+  } catch (error) {
+    appData.yeshivot = previousYeshivot;
+    renderAdminPanel('yeshivot', `עדכון הענן נכשל: ${error.message}`);
+  }
+}
+
+function renderSubmissionCard(request) {
+  const requestAnswers = Object.entries(request.answers || {}).map(([questionId, optionId]) => {
+    const question = appData.questions.find((item) => item.id === questionId);
+    const option = question?.options.find((item) => item.id === optionId);
+    return `<li>${escapeHtml(question?.text || questionId)}: ${escapeHtml(option?.label || optionId)}</li>`;
+  }).join('');
+
+  return `
+    <article class="request-card">
+      <div class="request-heading">
+        <div>
+          <strong>${request.type === 'update' ? 'בקשת עדכון' : 'הצעת ישיבה'}</strong>
+          <span>${escapeHtml(request.yeshivaName)}</span>
+        </div>
+        <time>${escapeHtml(new Date(request.submittedAt).toLocaleString('he-IL'))}</time>
+      </div>
+      ${request.details ? `<p>${escapeHtml(request.details)}</p>` : '<p class="muted-note">לא נוספו הערות.</p>'}
+      <details class="submission-answers">
+        <summary>תשובות לשאלון</summary>
+        <ul>${requestAnswers}</ul>
+      </details>
+      <div class="submission-actions">
+        <button class="text-button" type="button" data-submission-action="apply" data-submission-id="${escapeHtml(request.id)}">החל עדכון</button>
+        <button class="text-button danger-button" type="button" data-submission-action="dismiss" data-submission-id="${escapeHtml(request.id)}">דחה והסר</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderQuestionEditor(question, questionIndex) {
+  return `
+    <article class="admin-question-card" data-question-card>
+      <header class="editor-card-header">
+        <h3>שאלה ${questionIndex + 1}</h3>
+        <button class="icon-button danger-icon" type="button" data-action="remove-question" data-question-index="${questionIndex}" aria-label="הסר שאלה" title="הסר שאלה"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M5 7l1 13h12l1-13M9 7V4h6v3" /></svg></button>
+      </header>
+      <div class="editor-fields">
+        <label>מזהה שאלה
+          <input data-question-field="id" value="${escapeHtml(question.id)}" required />
+        </label>
+        <label>נוסח השאלה
+          <input data-question-field="text" value="${escapeHtml(question.text)}" required />
+        </label>
+      </div>
+      <div class="option-editor-list">
+        ${question.options.map((option, optionIndex) => `
+          <div class="admin-option-card" data-option-card>
+            <label>מזהה אפשרות<input data-option-field="id" value="${escapeHtml(option.id)}" required /></label>
+            <label>נוסח האפשרות<input data-option-field="label" value="${escapeHtml(option.label)}" required /></label>
+            <label>תגיות (מופרדות בפסיקים)<input data-option-field="tags" value="${escapeHtml(option.tags.join(', '))}" /></label>
+            <button class="text-button danger-button" type="button" data-action="remove-option" data-question-index="${questionIndex}" data-option-index="${optionIndex}">הסר אפשרות</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="text-button add-option-button" type="button" data-action="add-option" data-question-index="${questionIndex}">הוסף אפשרות</button>
+    </article>
+  `;
+}
+
+function renderYeshivaEditor(yeshiva, index) {
+  return `
+    <section class="yeshiva-editor" data-yeshiva-editor>
+      <div class="editor-fields">
+        <label>מזהה<input data-yeshiva-field="id" value="${escapeHtml(yeshiva.id)}" required /></label>
+        <label>שם הישיבה<input data-yeshiva-field="name" value="${escapeHtml(yeshiva.name)}" required /></label>
+        <label>שם קצר<input data-yeshiva-field="shortName" value="${escapeHtml(yeshiva.shortName || '')}" /></label>
+        <label>כותרת קצרה<input data-yeshiva-field="tagline" value="${escapeHtml(yeshiva.tagline || '')}" /></label>
+        <label>תיאור התאמה<input data-yeshiva-field="matchSummary" value="${escapeHtml(yeshiva.matchSummary || '')}" /></label>
+        <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="2">${escapeHtml(yeshiva.description || '')}</textarea></label>
+      </div>
+      <section class="profile-weights">
+        <div class="section-heading"><h4>תגיות ומשקלים</h4><button class="text-button" type="button" data-action="add-tag" data-yeshiva-index="${index}">הוסף תגית</button></div>
+        <div class="weight-list">
+          ${Object.entries(yeshiva.profileTags).map(([tag, weight], tagIndex) => `
+            <div class="weight-row" data-weight-row>
+              <label>תגית<input data-weight-field="tag" value="${escapeHtml(tag)}" required /></label>
+              <label>משקל<input data-weight-field="weight" type="number" min="0" max="100" step="0.1" value="${escapeHtml(weight)}" required /></label>
+              <button class="icon-button danger-icon" type="button" data-action="remove-tag" data-weight-index="${tagIndex}" aria-label="הסר תגית" title="הסר תגית"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M5 7l1 13h12l1-13M9 7V4h6v3" /></svg></button>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+      <details class="boost-editor">
+        <summary>הגדרות בונוס התאמה</summary>
+        <label class="toggle-field"><input data-boost-field="enabled" type="checkbox" ${yeshiva.boostRules?.enabled ? 'checked' : ''} /> הפעל בונוס</label>
+        <div class="editor-fields">
+          <label>בונוס באחוזים<input data-boost-field="bonus" type="number" min="0" max="20" step="0.1" value="${escapeHtml(yeshiva.boostRules?.bonus ?? 0)}" /></label>
+          <label>מספר תגיות בסיס דרוש<input data-boost-field="minMatches" type="number" min="0" max="20" step="1" value="${escapeHtml(yeshiva.boostRules?.minMatches ?? 0)}" /></label>
+          <label class="wide-field">תגיות בסיס (מופרדות בפסיקים)<input data-boost-field="baselineTags" value="${escapeHtml((yeshiva.boostRules?.baselineTags || []).join(', '))}" /></label>
+          <label class="wide-field">תגיות שמבטלות בונוס (מופרדות בפסיקים)<input data-boost-field="avoidanceTags" value="${escapeHtml((yeshiva.boostRules?.avoidanceTags || []).join(', '))}" /></label>
+        </div>
+      </details>
+      <button class="text-button danger-button remove-yeshiva-button" type="button" data-action="remove-yeshiva" data-yeshiva-index="${index}">הסר ישיבה</button>
+    </section>
+  `;
+}
+
+function renderYeshivaRequestGroup(yeshiva, requests, index = -1) {
+  const title = yeshiva?.name || requests[0].yeshivaName;
+  const isNewSuggestion = !yeshiva;
+  return `
+    <details class="managed-yeshiva ${requests.length ? 'has-pending' : ''}" ${requests.length ? 'open' : ''}>
+      <summary>
+        <span class="managed-yeshiva-title">${escapeHtml(title)}</span>
+        ${isNewSuggestion ? '<span class="pending-badge new-yeshiva-badge">ישיבה חדשה</span>' : ''}
+        ${requests.length ? `<span class="pending-badge">${requests.length} פניות ממתינות</span>` : ''}
+        <span class="summary-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      ${yeshiva ? renderYeshivaEditor(yeshiva, index) : '<p class="managed-profile-summary">הישיבה טרם נוספה לפרופילים.</p>'}
+      ${requests.length > 1 ? `<button class="nav-button secondary average-update-button" type="button" data-average-id="${escapeHtml(yeshiva?.id || '')}" data-average-name="${escapeHtml(normalizeYeshivaName(title))}">עדכן לפי ממוצע של כל הפניות (${requests.length})</button>` : ''}
+      <div class="submission-list">${requests.map(renderSubmissionCard).join('')}</div>
+    </details>
+  `;
+}
+
+function validateQuestions(questions) {
+  if (!Array.isArray(questions) || !questions.length) throw new Error('יש להזין לפחות שאלה אחת.');
+  if (questions.some((question) => !question.id || !question.text || !Array.isArray(question.options) || !question.options.length)) {
+    throw new Error('לכל שאלה נדרשים מזהה, טקסט ולפחות אפשרות אחת.');
+  }
+  if (questions.some((question) => question.options.some((option) => !option.id || !option.label || !Array.isArray(option.tags)))) {
+    throw new Error('לכל אפשרות נדרשים מזהה, טקסט ותגיות.');
+  }
+}
+
+function validateYeshivot(yeshivot) {
+  if (!Array.isArray(yeshivot) || !yeshivot.length) throw new Error('יש להזין לפחות פרופיל ישיבה אחד.');
+  if (yeshivot.some((yeshiva) => !yeshiva.id || !yeshiva.name || !yeshiva.profileTags || typeof yeshiva.profileTags !== 'object')) {
+    throw new Error('לכל ישיבה נדרשים מזהה, שם ופרופיל תגיות.');
+  }
+}
+
+function readQuestionsFromEditor() {
+  return [...root.querySelectorAll('[data-question-card]')].map((card) => ({
+    id: card.querySelector('[data-question-field="id"]').value.trim(),
+    text: card.querySelector('[data-question-field="text"]').value.trim(),
+    options: [...card.querySelectorAll('[data-option-card]')].map((optionCard) => ({
+      id: optionCard.querySelector('[data-option-field="id"]').value.trim(),
+      label: optionCard.querySelector('[data-option-field="label"]').value.trim(),
+      tags: optionCard.querySelector('[data-option-field="tags"]').value.split(',').map((tag) => tag.trim()).filter(Boolean)
+    }))
+  }));
+}
+
+function readYeshivotFromEditor() {
+  return [...root.querySelectorAll('[data-yeshiva-editor]')].map((editor) => {
+    const profileTags = {};
+    editor.querySelectorAll('[data-weight-row]').forEach((row) => {
+      const tag = row.querySelector('[data-weight-field="tag"]').value.trim();
+      const weight = Number(row.querySelector('[data-weight-field="weight"]').value);
+      if (tag) profileTags[tag] = weight;
+    });
+    const readField = (name) => editor.querySelector(`[data-yeshiva-field="${name}"]`).value.trim();
+    const readBoost = (name) => editor.querySelector(`[data-boost-field="${name}"]`);
+    const splitTags = (name) => readBoost(name).value.split(',').map((tag) => tag.trim()).filter(Boolean);
+
+    return {
+      id: readField('id'),
+      name: readField('name'),
+      shortName: readField('shortName'),
+      tagline: readField('tagline'),
+      description: editor.querySelector('[data-yeshiva-field="description"]').value.trim(),
+      matchSummary: readField('matchSummary'),
+      profileTags,
+      boostRules: {
+        enabled: readBoost('enabled').checked,
+        bonus: Number(readBoost('bonus').value) || 0,
+        minMatches: Number(readBoost('minMatches').value) || 0,
+        baselineTags: splitTags('baselineTags'),
+        avoidanceTags: splitTags('avoidanceTags')
+      }
+    };
+  });
+}
+
+function validateQuestions(questions) {
+  if (!questions.length) throw new Error('יש להוסיף לפחות שאלה אחת.');
+  const questionIds = questions.map((question) => question.id);
+  if (questionIds.some((id) => !id) || new Set(questionIds).size !== questionIds.length) {
+    throw new Error('מזהי השאלות חייבים להיות מלאים וייחודיים.');
+  }
+  if (questions.some((question) => !question.text || !question.options.length)) {
+    throw new Error('לכל שאלה נדרש נוסח ולפחות אפשרות אחת.');
+  }
+  if (questions.some((question) => {
+    const ids = question.options.map((option) => option.id);
+    return ids.some((id) => !id) || new Set(ids).size !== ids.length || question.options.some((option) => !option.label);
+  })) {
+    throw new Error('אפשרויות בכל שאלה צריכות מזהים ייחודיים ונוסח.');
+  }
+}
+
+function validateYeshivot(yeshivot) {
+  if (!yeshivot.length) throw new Error('יש להוסיף לפחות ישיבה אחת.');
+  const ids = yeshivot.map((yeshiva) => yeshiva.id);
+  if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
+    throw new Error('מזהי הישיבות חייבים להיות מלאים וייחודיים.');
+  }
+  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 0))) {
+    throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים שאינם שליליים.');
+  }
+}
+
+function readCurrentAdminDraft() {
+  if (state.adminTab === 'questions' && document.getElementById('questions-form')) {
+    state.adminQuestionsDraft = readQuestionsFromEditor();
+  }
+  if (state.adminTab === 'yeshivot' && document.getElementById('yeshivot-form')) {
+    state.adminYeshivotDraft = readYeshivotFromEditor();
+  }
+}
+
+function renderAdminPanel(activeTab = state.adminTab, message = '') {
+  if (!state.adminAuthenticated || !supabaseClient) {
+    renderAdminLogin();
+    return;
+  }
+  state.adminTab = activeTab;
+  const isQuestionsTab = activeTab === 'questions';
+  const questions = state.adminQuestionsDraft || appData.questions;
+  const yeshivot = state.adminYeshivotDraft || appData.yeshivot;
+  const requests = getSavedRequests();
+  const groups = new Map();
+  requests.forEach((request) => {
+    const key = normalizeYeshivaName(request.yeshivaName);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(request);
+  });
+  const assignedRequestIds = new Set();
+  const managedYeshivotMarkup = yeshivot.map((yeshiva, index) => {
+    const relatedRequests = requests.filter((request) => requestMatchesYeshiva(request, yeshiva));
+    relatedRequests.forEach((request) => assignedRequestIds.add(request.id));
+    return renderYeshivaRequestGroup(yeshiva, relatedRequests, index);
+  }).join('');
+  const newSuggestionGroups = [...groups.values()].filter((group) => !assignedRequestIds.has(group[0].id));
+  const requestsMarkup = managedYeshivotMarkup + newSuggestionGroups
+    .map((group) => renderYeshivaRequestGroup(null, group)).join('');
+
+  root.innerHTML = `
+    <section class="admin-panel">
+      <header class="admin-header">
+        <div><p class="eyebrow">ניהול מאובטח</p><h2>ניהול נתוני האתר</h2><p class="admin-user-label">${escapeHtml(state.adminEmail)}</p></div>
+        <div class="admin-header-actions">
+          <button class="icon-button" type="button" id="admin-lock" aria-label="התנתקות ונעילה" title="התנתקות ונעילה"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
+          <a class="text-link" href="#">חזרה לאתר</a>
+        </div>
+      </header>
+      ${message ? `<p class="admin-message" role="status">${escapeHtml(message)}</p>` : ''}
+      ${state.cloudMessage ? `<p class="security-note">${escapeHtml(state.cloudMessage)}</p>` : ''}
+
+      <nav class="admin-tabs" role="tablist" aria-label="עמודי ניהול">
+        <button class="admin-tab ${isQuestionsTab ? 'active' : ''}" type="button" role="tab" aria-selected="${isQuestionsTab}" data-admin-tab="questions">ניהול שאלות</button>
+        <button class="admin-tab ${!isQuestionsTab ? 'active' : ''}" type="button" role="tab" aria-selected="${!isQuestionsTab}" data-admin-tab="yeshivot">ניהול ישיבות</button>
+      </nav>
+
+      ${isQuestionsTab ? `
+        <form id="questions-form" class="dataset-form" role="tabpanel">
+          <div class="editor-list">${questions.map(renderQuestionEditor).join('')}</div>
+          <div class="admin-actions">
+            <button class="text-button" type="button" data-action="add-question">הוסף שאלה</button>
+            <button class="nav-button primary" type="submit">שמור שאלות</button>
+          </div>
+        </form>
+      ` : `
+        <form id="yeshivot-form" class="dataset-form" role="tabpanel">
+          <section class="requests-section">
+            <div class="section-heading"><div><p class="eyebrow">${requests.length} פניות ממתינות</p><h3>ישיבות ופניות משויכות</h3></div></div>
+            <div class="managed-yeshivot-list">${requestsMarkup || '<p class="empty-state">אין עדיין ישיבות או פניות לניהול.</p>'}</div>
+          </section>
+          <div class="admin-actions">
+            <button class="text-button" type="button" data-action="add-yeshiva">הוסף ישיבה</button>
+            <button class="nav-button primary" type="submit">שמור פרופילי ישיבות</button>
+          </div>
+        </form>
+      `}
+      <button class="text-button reset-cloud-button" type="button" id="reset-dataset">שחזר נתוני ברירת מחדל</button>
+    </section>
+  `;
+
+  document.getElementById('admin-lock').addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    state.adminAuthenticated = false;
+    state.adminEmail = '';
+    state.adminUserId = '';
+    renderAdminLogin();
+  });
+  root.querySelectorAll('[data-admin-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      readCurrentAdminDraft();
+      renderAdminPanel(button.dataset.adminTab);
+    });
+  });
+  root.querySelectorAll('[data-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (state.adminTab === 'questions') {
+        const questionsDraft = readQuestionsFromEditor();
+        const questionIndex = Number(button.dataset.questionIndex);
+        if (button.dataset.action === 'add-question') {
+          questionsDraft.push({ id: `question-${Date.now()}`, text: '', options: [{ id: 'option-1', label: '', tags: [] }] });
+        } else if (button.dataset.action === 'remove-question') {
+          questionsDraft.splice(questionIndex, 1);
+        } else if (button.dataset.action === 'add-option') {
+          questionsDraft[questionIndex].options.push({ id: `option-${Date.now()}`, label: '', tags: [] });
+        } else if (button.dataset.action === 'remove-option') {
+          questionsDraft[questionIndex].options.splice(Number(button.dataset.optionIndex), 1);
+        }
+        state.adminQuestionsDraft = questionsDraft;
+        renderAdminPanel('questions');
+        return;
+      }
+
+      const yeshivotDraft = readYeshivotFromEditor();
+      const yeshivaIndex = Number(button.dataset.yeshivaIndex);
+      if (button.dataset.action === 'add-yeshiva') {
+        yeshivotDraft.push({
+          id: `yeshiva-${Date.now()}`,
+          name: '', shortName: '', tagline: '', description: '', matchSummary: '',
+          profileTags: {},
+          boostRules: { enabled: false, bonus: 0, minMatches: 0, baselineTags: [], avoidanceTags: [] }
+        });
+      } else if (button.dataset.action === 'remove-yeshiva') {
+        yeshivotDraft.splice(yeshivaIndex, 1);
+      } else if (button.dataset.action === 'add-tag') {
+        const profile = yeshivotDraft[yeshivaIndex].profileTags;
+        let tagName = 'new_tag';
+        let suffix = 2;
+        while (Object.hasOwn(profile, tagName)) tagName = `new_tag_${suffix++}`;
+        profile[tagName] = 1;
+      } else if (button.dataset.action === 'remove-tag') {
+        const editor = button.closest('[data-yeshiva-editor]');
+        const rows = [...editor.querySelectorAll('[data-weight-row]')];
+        const tagName = rows[Number(button.dataset.weightIndex)]?.querySelector('[data-weight-field="tag"]').value.trim();
+        if (tagName) delete yeshivotDraft[yeshivaIndex].profileTags[tagName];
+      }
+      state.adminYeshivotDraft = yeshivotDraft;
+      renderAdminPanel('yeshivot');
+    });
+  });
+  root.querySelectorAll('[data-submission-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const requestId = button.dataset.submissionId;
+      if (button.dataset.submissionAction === 'dismiss') {
+        await dismissSubmission(requestId);
+        return;
+      }
+      const request = getSavedRequests().find((item) => item.id === requestId);
+      if (request) await applySubmissionGroup([request]);
+    });
+  });
+  root.querySelectorAll('[data-average-name]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const key = button.dataset.averageName;
+      const target = appData.yeshivot.find((yeshiva) => yeshiva.id === button.dataset.averageId);
+      const group = getSavedRequests().filter((request) => target
+        ? requestMatchesYeshiva(request, target)
+        : normalizeYeshivaName(request.yeshivaName) === key);
+      await applySubmissionGroup(group);
+    });
+  });
+
+  document.getElementById('questions-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const questions = readQuestionsFromEditor();
+    const previousQuestions = appData.questions;
+    try {
+      validateQuestions(questions);
+      appData.questions = questions;
+      await saveCloudContent();
+      state.adminQuestionsDraft = null;
+      renderAdminPanel('questions', 'השאלות נשמרו במסד הנתונים המשותף.');
+    } catch (error) {
+      appData.questions = previousQuestions;
+      state.adminQuestionsDraft = questions;
+      renderAdminPanel('questions', `לא נשמר: ${error.message}`);
+    }
+  });
+
+  document.getElementById('yeshivot-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const yeshivot = readYeshivotFromEditor();
+    const previousYeshivot = appData.yeshivot;
+    try {
+      validateYeshivot(yeshivot);
+      appData.yeshivot = yeshivot;
+      await saveCloudContent();
+      state.adminYeshivotDraft = null;
+      renderAdminPanel('yeshivot', 'פרופילי הישיבות נשמרו במסד הנתונים המשותף.');
+    } catch (error) {
+      appData.yeshivot = previousYeshivot;
+      state.adminYeshivotDraft = yeshivot;
+      renderAdminPanel('yeshivot', `לא נשמר: ${error.message}`);
+    }
+  });
+
+  document.getElementById('reset-dataset').addEventListener('click', async () => {
+    const previousQuestions = appData.questions;
+    const previousYeshivot = appData.yeshivot;
+    appData.questions = JSON.parse(JSON.stringify(bundledContent.questions));
+    appData.yeshivot = JSON.parse(JSON.stringify(bundledContent.yeshivot));
+    try {
+      await saveCloudContent();
+      state.adminQuestionsDraft = null;
+      state.adminYeshivotDraft = null;
+      renderAdminPanel(state.adminTab, 'נתוני ברירת המחדל נשמרו במסד הנתונים.');
+    } catch (error) {
+      appData.questions = previousQuestions;
+      appData.yeshivot = previousYeshivot;
+      renderAdminPanel(state.adminTab, `שחזור הנתונים נכשל: ${error.message}`);
+    }
+  });
+}
+
+function renderQuestionnaire() {
+  const currentQuestion = appData.questions[state.currentIndex];
+  root.innerHTML = buildQuestionMarkup(currentQuestion, state.currentIndex);
+
+  const prevButton = document.getElementById('prev-button');
+  const nextButton = document.getElementById('next-button');
+  const optionButtons = root.querySelectorAll('.option-button');
+
+  optionButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const { questionId, optionId } = button.dataset;
+      state.answers[questionId] = optionId;
+
+      if (state.currentIndex === appData.questions.length - 1) {
+        state.completed = true;
+        renderResults();
+        return;
+      }
+
+      state.currentIndex += 1;
+      render();
+    });
+  });
+
+  prevButton.addEventListener('click', () => {
+    if (state.currentIndex > 0) {
+      state.currentIndex -= 1;
+      render();
+    }
+  });
+
+  nextButton.addEventListener('click', () => {
+    if (!state.answers[currentQuestion.id]) {
+      return;
+    }
+
+    if (state.currentIndex === appData.questions.length - 1) {
+      state.completed = true;
+      renderResults();
+      return;
+    }
+
+    state.currentIndex += 1;
+    render();
+  });
+}
+
+function render() {
+  if (window.location.hash === '#admin-secret') {
+    if (state.adminAuthenticated) {
+      renderAdminPanel();
+    } else {
+      renderAdminLogin();
+    }
+    return;
+  }
+
+  state.adminAuthenticated = false;
+
+  if (state.completed) {
+    renderResults();
+    return;
+  }
+
+  if (!state.started) {
+    renderWelcome();
+    return;
+  }
+
+  renderQuestionnaire();
+}
+
+async function restoreAdminSession() {
+  if (!supabaseClient) return;
+  const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session) {
+    state.adminAuthenticated = false;
+    return;
+  }
+
+  const { data: adminRow, error } = await supabaseClient
+    .from('admins')
+    .select('user_id')
+    .eq('user_id', session.user.id)
+    .maybeSingle();
+
+  if (error || !adminRow) {
+    await supabaseClient.auth.signOut();
+    state.adminAuthenticated = false;
+    return;
+  }
+
+  state.adminAuthenticated = true;
+  state.adminEmail = session.user.email;
+  state.adminUserId = session.user.id;
+  try {
+    await loadPendingRequests();
+  } catch (loadError) {
+    state.cloudMessage = `לא ניתן לטעון פניות: ${loadError.message}`;
+  }
+}
+
+async function handleRouteChange() {
+  if (window.location.hash === '#admin-secret') {
+    await restoreAdminSession();
+  }
+  render();
+}
+
+async function initializeApp() {
+  if (supabaseClient) {
+    await loadCloudContent();
+    await restoreAdminSession();
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        state.adminAuthenticated = false;
+        state.adminEmail = '';
+        state.adminUserId = '';
+        if (window.location.hash === '#admin-secret') renderAdminLogin();
+      }
+    });
+    supabaseClient
+      .channel('public-site-content')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'site_content',
+        filter: 'id=eq.main'
+      }, (payload) => {
+        if (!payload.new?.questions || !payload.new?.yeshivot) return;
+        appData.questions = payload.new.questions;
+        appData.yeshivot = payload.new.yeshivot;
+        if (window.location.hash !== '#admin-secret') render();
+      })
+      .subscribe();
+  }
+
+  window.addEventListener('hashchange', handleRouteChange);
+  await handleRouteChange();
+}
+
+initializeApp();
