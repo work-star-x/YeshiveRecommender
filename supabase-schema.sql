@@ -306,8 +306,10 @@ begin
     raise exception 'Administrator access is required.';
   end if;
 
-  delete from public.yeshiva_analytics;
-  delete from public.analytics_counters;
+  delete from public.yeshiva_analytics
+  where yeshiva_id is not null;
+  delete from public.analytics_counters
+  where event_type in ('completion', 'share_home', 'share_results');
 end;
 $$;
 
@@ -343,8 +345,10 @@ begin
       updated_at = excluded.updated_at,
       updated_by = excluded.updated_by;
 
-  delete from public.yeshiva_analytics;
-  delete from public.analytics_counters;
+  delete from public.yeshiva_analytics
+  where yeshiva_id is not null;
+  delete from public.analytics_counters
+  where event_type in ('completion', 'share_home', 'share_results');
 end;
 $$;
 
