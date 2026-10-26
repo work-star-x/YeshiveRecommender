@@ -211,9 +211,9 @@ function showNotice(message) {
 function renderWelcome() {
   root.innerHTML = `
     <section class="welcome-panel">
-      <span class="welcome-kicker">מסע קטן, בחירה משמעותית</span>
-      <h2>מוצאים את המקום<br />שמתאים לדרך שלך</h2>
-      <p>ענה על כמה שאלות קצרות על הלימוד, האווירה והכיוון שלך. בסוף תקבל שלוש ישיבות שכדאי לך להכיר.</p>
+      <span class="welcome-kicker">2 דקות</span>
+      <h2>נמצא את המקום<br />שמתאים לך</h2>
+      <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך.</p>
       <div class="welcome-actions">
         <button class="nav-button primary start-button" type="button" id="start-button">התחל</button>
         <button class="nav-button secondary share-button" type="button" id="share-app-button" aria-label="שתף את הכלי" title="שתף">
