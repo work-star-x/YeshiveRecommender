@@ -723,6 +723,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 13px;
   background: #fffefa;
+  box-shadow: 0 5px 16px rgba(83, 59, 35, 0.05);
 }
 
 .editor-card-header {
@@ -790,6 +791,45 @@ h1 {
   grid-column: 1 / -1;
 }
 
+.parameter-checkboxes {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.parameter-checkboxes legend {
+  padding-inline: 0.3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.parameter-checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-option-card .parameter-checkbox-list label {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  background: #f5ede2;
+  font-size: 0.76rem;
+}
+
+.parameter-checkbox-list input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brand);
+}
+
 .admin-option-card .text-button {
   justify-self: start;
 }
@@ -813,24 +853,214 @@ h1 {
 
 .weight-list {
   display: grid;
-  gap: 0.5rem;
+  gap: 0;
   margin-top: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: visible;
+  background: var(--panel);
 }
 
 .weight-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 40px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.weight-row:last-child {
+  border-bottom: 0;
+}
+
+.parameter-name {
+  font-weight: 700;
+}
+
+.parameter-weight {
+  min-width: 3.2rem;
+  padding-inline: 0.5rem;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.parameter-change {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.parameter-change.positive {
+  color: #24633c;
+  border-color: #b7d8c0;
+  background: #e1f2e5;
+}
+
+.parameter-change.negative {
+  color: #9d382f;
+  border-color: #e7c0b8;
+  background: #f9e4df;
+}
+
+.parameter-change.neutral {
+  color: #6b5d4d;
+  border-color: var(--line);
+  background: #f4eee6;
+}
+
+.parameter-suggestion-details {
+  position: relative;
+}
+
+.parameter-suggestion-details summary {
+  list-style: none;
+}
+
+.parameter-suggestion-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.parameter-suggestion-popover {
+  position: absolute;
+  z-index: 8;
+  inset-inline-end: 0;
+  top: calc(100% + 0.35rem);
+  display: grid;
+  gap: 0.35rem;
+  min-width: 210px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.yeshiva-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.85rem 0.9rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.65);
+}
+
+.parameter-management-section,
+.analytics-yeshivot {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffefa;
+  box-shadow: 0 5px 16px rgba(83, 59, 35, 0.05);
+}
+
+.parameter-editor-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.parameter-editor-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: end;
-  gap: 0.55rem;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel);
 }
 
-.weight-row label {
-  font-size: 0.78rem;
+.parameter-editor-card label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
-.weight-row .icon-button {
-  width: 38px;
-  height: 38px;
+.parameter-editor-card input {
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+}
+
+.analytics-notice {
+  padding: 0.8rem 1rem;
+  border: 1px solid #c9daca;
+  border-radius: 11px;
+  color: #385b3e;
+  background: #edf6ee;
+}
+
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+
+.analytics-card,
+.analytics-yeshiva-card {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fffefa, #f8f2e9);
+}
+
+.analytics-card {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.analytics-card span,
+.analytics-yeshiva-card span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.analytics-card strong {
+  color: var(--brand-dark);
+  font-size: 1.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-yeshivot h3 {
+  margin-top: 0;
+}
+
+.analytics-yeshiva-card {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.65rem;
+}
+
+.analytics-yeshiva-card h4 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.analytics-yeshiva-card div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.analytics-yeshiva-card strong {
+  font-variant-numeric: tabular-nums;
 }
 
 .danger-icon {
@@ -871,6 +1101,7 @@ h1 {
 
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
   margin: 1.2rem 0;
   padding: 0.35rem;
@@ -880,7 +1111,7 @@ h1 {
 }
 
 .admin-tab {
-  flex: 1;
+  flex: 1 1 130px;
   min-height: 44px;
   border: 0;
   border-radius: 9px;
@@ -1178,6 +1409,27 @@ h1 {
   .request-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .parameter-editor-card,
+  .analytics-summary,
+  .analytics-yeshiva-card {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-yeshiva-card h4 {
+    grid-column: auto;
+  }
+
+  .weight-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .weight-row .parameter-suggestion-details,
+  .weight-row > .parameter-change,
+  .weight-row > .muted-note {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .editor-fields,
