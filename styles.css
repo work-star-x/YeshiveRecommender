@@ -380,6 +380,8 @@ h1 {
 }
 
 .welcome-panel {
+  position: relative;
+  isolation: isolate;
   max-width: 680px;
   min-height: 410px;
   margin: 0 auto;
@@ -391,13 +393,88 @@ h1 {
   animation: fadeUp 0.4s ease;
 }
 
+.welcome-art {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: -2.2rem;
+  width: clamp(190px, 38vw, 290px);
+  transform: translateY(-50%);
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.welcome-art svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.welcome-art-wash {
+  fill: #f4e5d1;
+  opacity: 0.68;
+}
+
+.welcome-art-steam,
+.welcome-art-detail {
+  fill: none;
+  stroke: #b9815d;
+  stroke-linecap: round;
+}
+
+.welcome-art-steam {
+  stroke-width: 5;
+  opacity: 0.58;
+}
+
+.welcome-art-shadow {
+  fill: #9e6d4d;
+  opacity: 0.1;
+}
+
+.welcome-art-saucer {
+  fill: #ead4bc;
+  stroke: #c8a181;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.welcome-art-cup {
+  fill: #fffaf1;
+  stroke: #9f6548;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.welcome-art-handle {
+  fill: none;
+  stroke: #9f6548;
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.welcome-art-rim {
+  fill: #d5a783;
+  stroke: #9f6548;
+  stroke-width: 4;
+}
+
+.welcome-art-detail {
+  stroke-width: 4;
+  opacity: 0.5;
+}
+
 .welcome-kicker {
+  position: relative;
+  z-index: 1;
   color: var(--brand-dark);
   font-weight: 700;
   margin-bottom: 1rem;
 }
 
 .welcome-panel h2 {
+  position: relative;
+  z-index: 1;
   margin: 0;
   font-size: clamp(2rem, 7vw, 3.6rem);
   line-height: 1.2;
@@ -405,6 +482,8 @@ h1 {
 }
 
 .welcome-panel > p {
+  position: relative;
+  z-index: 1;
   max-width: 560px;
   color: var(--muted);
   font-size: 1.08rem;
@@ -424,6 +503,11 @@ h1 {
 
 .start-button {
   min-width: 150px;
+}
+
+.welcome-actions {
+  position: relative;
+  z-index: 1;
 }
 
 .admin-entry,
@@ -1451,6 +1535,21 @@ h1 {
 }
 
 @media (max-width: 520px) {
+  .welcome-panel {
+    min-height: 440px;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .welcome-art {
+    top: auto;
+    bottom: -0.75rem;
+    left: 50%;
+    width: 190px;
+    transform: translateX(-50%);
+    opacity: 0.38;
+  }
+
   .welcome-actions,
   .results-actions,
   .admin-actions,
