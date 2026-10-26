@@ -211,18 +211,6 @@ function showNotice(message) {
 function renderWelcome() {
   root.innerHTML = `
     <section class="welcome-panel">
-      <div class="welcome-art" aria-hidden="true">
-        <svg viewBox="0 0 320 280" role="presentation">
-          <circle class="welcome-art-wash" cx="174" cy="145" r="118"></circle>
-          <path class="welcome-art-steam" d="M116 72c-12-14 13-21 1-37M158 68c-12-14 13-21 1-37M199 72c-12-14 13-21 1-37"></path>
-          <ellipse class="welcome-art-shadow" cx="166" cy="218" rx="103" ry="15"></ellipse>
-          <path class="welcome-art-saucer" d="M67 197c7 23 47 37 101 37s94-14 101-37c-26 9-58 14-101 14s-75-5-101-14Z"></path>
-          <path class="welcome-art-cup" d="M91 105h145v70c0 31-25 55-55 55h-35c-30 0-55-24-55-55v-70Z"></path>
-          <path class="welcome-art-handle" d="M236 119h18c22 0 34 15 34 34s-13 35-37 35h-20"></path>
-          <path class="welcome-art-rim" d="M91 107c0-9 32-16 72-16s73 7 73 16-33 16-73 16-72-7-72-16Z"></path>
-          <path class="welcome-art-detail" d="M124 145h79"></path>
-        </svg>
-      </div>
       <span class="welcome-kicker">מסע קטן, בחירה משמעותית</span>
       <h2>מוצאים את המקום<br />שמתאים לדרך שלך</h2>
       <p>ענה על כמה שאלות קצרות על הלימוד, האווירה והכיוון שלך. בסוף תקבל שלוש ישיבות שכדאי לך להכיר.</p>

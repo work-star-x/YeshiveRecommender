@@ -62,12 +62,10 @@ select {
   place-items: center;
   width: 48px;
   height: 48px;
+  padding: 7px;
   border-radius: 14px;
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #fff;
-  background: linear-gradient(135deg, #8e402e, #c47b4c);
-  box-shadow: 0 10px 24px rgba(142, 64, 46, 0.22);
+  background: #f4e5d1;
+  box-shadow: 0 8px 20px rgba(142, 64, 46, 0.14);
 }
 
 .eyebrow {
@@ -391,77 +389,6 @@ h1 {
   justify-content: center;
   align-items: flex-start;
   animation: fadeUp 0.4s ease;
-}
-
-.welcome-art {
-  position: absolute;
-  z-index: -1;
-  top: 50%;
-  left: -2.2rem;
-  width: clamp(190px, 38vw, 290px);
-  transform: translateY(-50%);
-  opacity: 0.78;
-  pointer-events: none;
-}
-
-.welcome-art svg {
-  display: block;
-  width: 100%;
-  overflow: visible;
-}
-
-.welcome-art-wash {
-  fill: #f4e5d1;
-  opacity: 0.68;
-}
-
-.welcome-art-steam,
-.welcome-art-detail {
-  fill: none;
-  stroke: #b9815d;
-  stroke-linecap: round;
-}
-
-.welcome-art-steam {
-  stroke-width: 5;
-  opacity: 0.58;
-}
-
-.welcome-art-shadow {
-  fill: #9e6d4d;
-  opacity: 0.1;
-}
-
-.welcome-art-saucer {
-  fill: #ead4bc;
-  stroke: #c8a181;
-  stroke-width: 3;
-  stroke-linejoin: round;
-}
-
-.welcome-art-cup {
-  fill: #fffaf1;
-  stroke: #9f6548;
-  stroke-width: 4;
-  stroke-linejoin: round;
-}
-
-.welcome-art-handle {
-  fill: none;
-  stroke: #9f6548;
-  stroke-width: 12;
-  stroke-linecap: round;
-}
-
-.welcome-art-rim {
-  fill: #d5a783;
-  stroke: #9f6548;
-  stroke-width: 4;
-}
-
-.welcome-art-detail {
-  stroke-width: 4;
-  opacity: 0.5;
 }
 
 .welcome-kicker {
@@ -1539,15 +1466,6 @@ h1 {
     min-height: 440px;
     padding-top: 2rem;
     padding-bottom: 2rem;
-  }
-
-  .welcome-art {
-    top: auto;
-    bottom: -0.75rem;
-    left: 50%;
-    width: 190px;
-    transform: translateX(-50%);
-    opacity: 0.38;
   }
 
   .welcome-actions,
