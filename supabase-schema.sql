@@ -172,7 +172,7 @@ begin
   end if;
 
   if p_event_type = 'completion' then
-    if jsonb_typeof(p_results) <> 'array' or jsonb_array_length(p_results) > 100 then
+    if jsonb_typeof(p_results) is distinct from 'array' or jsonb_array_length(p_results) > 100 then
       raise exception 'Completion results must be an array of up to one hundred placements.';
     end if;
     select jsonb_array_length(yeshivot)
@@ -294,6 +294,62 @@ $$;
 
 revoke all on function public.get_admin_analytics() from public, anon;
 grant execute on function public.get_admin_analytics() to authenticated;
+
+create or replace function public.reset_admin_analytics()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_site_admin() then
+    raise exception 'Administrator access is required.';
+  end if;
+
+  delete from public.yeshiva_analytics;
+  delete from public.analytics_counters;
+end;
+$$;
+
+revoke all on function public.reset_admin_analytics() from public, anon;
+grant execute on function public.reset_admin_analytics() to authenticated;
+
+create or replace function public.restore_site_defaults(
+  p_questions jsonb,
+  p_yeshivot jsonb,
+  p_parameters jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_site_admin() then
+    raise exception 'Administrator access is required.';
+  end if;
+  if jsonb_typeof(p_questions) is distinct from 'array' or jsonb_array_length(p_questions) = 0
+    or jsonb_typeof(p_yeshivot) is distinct from 'array' or jsonb_array_length(p_yeshivot) = 0
+    or jsonb_typeof(p_parameters) is distinct from 'array' then
+    raise exception 'Default content has an invalid structure.';
+  end if;
+
+  insert into public.site_content (id, questions, yeshivot, parameters, updated_at, updated_by)
+  values ('main', p_questions, p_yeshivot, p_parameters, now(), (select auth.uid()))
+  on conflict (id) do update
+  set questions = excluded.questions,
+      yeshivot = excluded.yeshivot,
+      parameters = excluded.parameters,
+      updated_at = excluded.updated_at,
+      updated_by = excluded.updated_by;
+
+  delete from public.yeshiva_analytics;
+  delete from public.analytics_counters;
+end;
+$$;
+
+revoke all on function public.restore_site_defaults(jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.restore_site_defaults(jsonb, jsonb, jsonb) to authenticated;
 
 revoke all on function public.has_current_questionnaire_answers(jsonb) from public;
 grant execute on function public.has_current_questionnaire_answers(jsonb) to anon, authenticated;

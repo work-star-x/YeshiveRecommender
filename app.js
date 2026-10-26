@@ -905,12 +905,13 @@ async function resolveParameterSuggestions(requests, tags) {
 
 async function applyParameterSuggestion(yeshivaId, requestId, tag) {
   const request = getSavedRequests().find((item) => item.id === requestId);
-  const yeshiva = appData.yeshivot.find((item) => item.id === yeshivaId);
+  const currentYeshivot = state.adminYeshivotDraft || appData.yeshivot;
+  const yeshiva = currentYeshivot.find((item) => item.id === yeshivaId);
   if (!request || !yeshiva || (request.resolvedTags || []).includes(tag)) return;
   const delta = getSuggestionDeltas(yeshiva, [request]).find((item) => item.tag === tag)?.suggestions[0]?.delta;
   if (delta === undefined) return;
   const previousYeshivot = appData.yeshivot;
-  appData.yeshivot = appData.yeshivot.map((item) => item.id === yeshivaId
+  appData.yeshivot = currentYeshivot.map((item) => item.id === yeshivaId
     ? { ...item, profileTags: { ...item.profileTags, [tag]: Math.max(0, Math.round(((item.profileTags[tag] || 0) + delta) * 10) / 10) } }
     : item);
   try {
@@ -928,7 +929,8 @@ async function applyAllParameterSuggestions(yeshiva, requests) {
   if (!yeshiva || !requests.length) return;
   const suggestions = getSuggestionDeltas(yeshiva, requests);
   const previousYeshivot = appData.yeshivot;
-  appData.yeshivot = appData.yeshivot.map((item) => {
+  const currentYeshivot = state.adminYeshivotDraft || appData.yeshivot;
+  appData.yeshivot = currentYeshivot.map((item) => {
     if (item.id !== yeshiva.id) return item;
     const profileTags = { ...item.profileTags };
     suggestions.forEach(({ tag, averageDelta }) => {
@@ -1095,7 +1097,10 @@ function renderYeshivaEditor(yeshiva, index) {
             return `
             <div class="weight-row" data-weight-row data-parameter-id="${escapeHtml(tag)}" data-parameter-weight="${weight}">
               <span class="parameter-name">${escapeHtml(label)}</span>
-              <strong class="parameter-weight">${Number(weight).toFixed(1)}</strong>
+              <label class="parameter-weight-field">
+                <span class="sr-only">משקל ${escapeHtml(label)}</span>
+                <input class="parameter-weight" data-weight-field="weight" type="number" min="0" max="100" step="0.1" value="${Number(weight).toFixed(1)}" required />
+              </label>
               ${suggestionControl}
             </div>
           `}).join('')}
@@ -1176,7 +1181,7 @@ function readYeshivotFromEditor() {
   return [...root.querySelectorAll('[data-yeshiva-editor]')].map((editor) => {
     const profileTags = {};
     editor.querySelectorAll('[data-weight-row]').forEach((row) => {
-      profileTags[row.dataset.parameterId] = Number(row.dataset.parameterWeight);
+      profileTags[row.dataset.parameterId] = Number(row.querySelector('[data-weight-field="weight"]').value);
     });
     const readField = (name) => editor.querySelector(`[data-yeshiva-field="${name}"]`).value.trim();
     const readBoost = (name) => editor.querySelector(`[data-boost-field="${name}"]`);
@@ -1236,7 +1241,16 @@ function validateParameters(parameters) {
 function renderStatisticsPanel() {
   if (state.adminStatsError) return `<section class="statistics-panel"><p class="admin-message">${escapeHtml(state.adminStatsError)}</p></section>`;
   if (!state.adminStats) return '<section class="statistics-panel"><p class="empty-state">טוען נתונים מצטברים…</p></section>';
-  const yeshivot = state.adminStats.yeshivot || [];
+  const analyticsById = new Map((state.adminStats.yeshivot || []).map((item) => [item.yeshiva_id, item]));
+  const yeshivot = appData.yeshivot.map((yeshiva) => ({
+    yeshiva,
+    stats: analyticsById.get(yeshiva.id) || {}
+  }));
+  const maxPlacements = Math.max(1, ...yeshivot.flatMap(({ stats }) => [
+    Number(stats.first_place || 0),
+    Number(stats.second_place || 0),
+    Number(stats.third_place || 0)
+  ]));
   return `
     <section class="statistics-panel" role="tabpanel">
       <div class="analytics-notice">הנתונים מצטברים בלבד. לא נשמרים פרטי משתמשים או מזהי דפדפן; כל השלמת שאלון נספרת בנפרד.</div>
@@ -1247,17 +1261,35 @@ function renderStatisticsPanel() {
       </div>
       <section class="analytics-yeshivot">
         <h3>התאמות לפי ישיבה</h3>
-        ${yeshivot.length ? yeshivot.map((item) => {
-          const yeshiva = appData.yeshivot.find((entry) => entry.id === item.yeshiva_id);
+        ${yeshivot.length ? yeshivot.map(({ yeshiva, stats }) => {
+          const placements = [
+            { label: 'מקום ראשון', value: Number(stats.first_place || 0), className: 'first' },
+            { label: 'מקום שני', value: Number(stats.second_place || 0), className: 'second' },
+            { label: 'מקום שלישי', value: Number(stats.third_place || 0), className: 'third' }
+          ];
+          const averageScore = Number(stats.average_score || 0);
           return `<article class="analytics-yeshiva-card">
-            <h4>${escapeHtml(yeshiva?.name || item.yeshiva_id)}</h4>
-            <div><span>מקום ראשון</span><strong>${Number(item.first_place || 0)}</strong></div>
-            <div><span>מקום שני</span><strong>${Number(item.second_place || 0)}</strong></div>
-            <div><span>מקום שלישי</span><strong>${Number(item.third_place || 0)}</strong></div>
-            <div><span>ממוצע התאמה</span><strong>${Number(item.average_score || 0).toFixed(1)}%</strong></div>
+            <h4>${escapeHtml(yeshiva.name)}</h4>
+            <div class="analytics-rank-chart" aria-label="דירוגי התאמה">
+              ${placements.map(({ label, value, className }) => `<div class="analytics-bar-row">
+                <span>${label}</span><strong>${value}</strong>
+                <div class="analytics-bar-track" role="img" aria-label="${label}: ${value}">
+                  <span class="analytics-bar ${className}" style="width:${Math.max(0, Math.min(100, value / maxPlacements * 100))}%"></span>
+                </div>
+              </div>`).join('')}
+              <div class="analytics-bar-row average-score-row">
+                <span>ממוצע התאמה</span><strong>${averageScore.toFixed(1)}%</strong>
+                <div class="analytics-bar-track" role="img" aria-label="ממוצע התאמה: ${averageScore.toFixed(1)} אחוז">
+                  <span class="analytics-bar average" style="width:${Math.max(0, Math.min(100, averageScore))}%"></span>
+                </div>
+              </div>
+            </div>
           </article>`;
-        }).join('') : '<p class="empty-state">עדיין אין נתוני השלמות.</p>'}
+        }).join('') : '<p class="empty-state">עדיין אין ישיבות להצגה.</p>'}
       </section>
+      <div class="statistics-actions">
+        <button class="text-button danger-button" type="button" id="reset-statistics">אפס את כל הסטטיסטיקה</button>
+      </div>
     </section>
   `;
 }
@@ -1272,6 +1304,24 @@ async function loadAdminStatistics() {
     state.adminStatsError = '';
   }
   if (state.adminTab === 'statistics') renderAdminPanel('statistics');
+}
+
+async function resetAdminStatistics() {
+  if (!window.confirm('לאפס את כל נתוני הסטטיסטיקה? לא ניתן לבטל פעולה זו.')) return;
+  const button = document.getElementById('reset-statistics');
+  if (button) button.disabled = true;
+  try {
+    const { error } = await supabaseClient.rpc('reset_admin_analytics');
+    if (error) throw error;
+    state.adminStats = { completions: 0, home_shares: 0, results_shares: 0, yeshivot: [] };
+    state.adminStatsError = '';
+    await loadAdminStatistics();
+    renderAdminPanel('statistics', 'כל נתוני הסטטיסטיקה אופסו.');
+  } catch (error) {
+    console.error('Admin analytics reset failed.', error);
+    state.adminStatsError = `לא ניתן לאפס את הסטטיסטיקה: ${error.message}`;
+    renderAdminPanel('statistics');
+  }
 }
 
 function validateQuestions(questions) {
@@ -1297,8 +1347,8 @@ function validateYeshivot(yeshivot) {
   if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
     throw new Error('מזהי הישיבות חייבים להיות מלאים וייחודיים.');
   }
-  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 0))) {
-    throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים שאינם שליליים.');
+  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 0 || weight > 100))) {
+    throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים בין 0 ל-100.');
   }
 }
 
@@ -1406,6 +1456,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
     state.adminUserId = '';
     renderAdminLogin();
   });
+  document.getElementById('reset-statistics')?.addEventListener('click', resetAdminStatistics);
   root.querySelectorAll('[data-admin-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       readCurrentAdminDraft();
@@ -1465,11 +1516,14 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
         state.adminParametersDraft = draft;
         renderAdminPanel('parameters');
       } else if (action === 'accept-one') {
+        state.adminYeshivotDraft = readYeshivotFromEditor();
         await applyParameterSuggestion(button.dataset.yeshivaId, button.dataset.submissionId, button.dataset.parameterId);
       } else if (action === 'accept-all') {
+        state.adminYeshivotDraft = readYeshivotFromEditor();
         const yeshiva = appData.yeshivot.find((item) => item.id === button.dataset.yeshivaId);
-        const requests = yeshiva ? getSavedRequests().filter((request) => requestMatchesYeshiva(request, yeshiva)) : [];
-        await applyAllParameterSuggestions(yeshiva, requests);
+        const draftYeshiva = state.adminYeshivotDraft.find((item) => item.id === button.dataset.yeshivaId);
+        const requests = draftYeshiva ? getSavedRequests().filter((request) => requestMatchesYeshiva(request, draftYeshiva)) : [];
+        await applyAllParameterSuggestions(draftYeshiva || yeshiva, requests);
       } else if (action === 'dismiss-all') {
         const yeshiva = appData.yeshivot.find((item) => item.id === button.dataset.yeshivaId);
         const requests = getSavedRequests().filter((request) => yeshiva
@@ -1597,11 +1651,18 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
     appData.yeshivot = JSON.parse(JSON.stringify(bundledContent.yeshivot));
     appData.parameters = JSON.parse(JSON.stringify(bundledContent.parameters));
     try {
-      await saveCloudContent();
+      const { error } = await supabaseClient.rpc('restore_site_defaults', {
+        p_questions: appData.questions,
+        p_yeshivot: appData.yeshivot,
+        p_parameters: appData.parameters
+      });
+      if (error) throw error;
+      state.adminStats = { completions: 0, home_shares: 0, results_shares: 0, yeshivot: [] };
+      state.adminStatsError = '';
       state.adminQuestionsDraft = null;
       state.adminYeshivotDraft = null;
       state.adminParametersDraft = null;
-      renderAdminPanel(state.adminTab, 'נתוני ברירת המחדל נשמרו במסד הנתונים.');
+      renderAdminPanel(state.adminTab, 'נתוני ברירת המחדל נשמרו והסטטיסטיקה אופסה.');
     } catch (error) {
       appData.questions = previousQuestions;
       appData.yeshivot = previousYeshivot;

@@ -880,11 +880,32 @@ h1 {
 }
 
 .parameter-weight {
+  width: 4.6rem;
   min-width: 3.2rem;
-  padding-inline: 0.5rem;
-  color: var(--muted);
+  padding: 0.4rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #fffefa;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.parameter-weight:focus-visible {
+  outline: 2px solid rgba(169, 79, 55, 0.42);
+  outline-offset: 1px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .parameter-change {
@@ -1044,23 +1065,67 @@ h1 {
 
 .analytics-yeshiva-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: 0.75rem;
   margin-top: 0.65rem;
 }
 
 .analytics-yeshiva-card h4 {
-  grid-column: 1 / -1;
   margin: 0;
 }
 
-.analytics-yeshiva-card div {
+.analytics-rank-chart {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.6rem;
 }
 
-.analytics-yeshiva-card strong {
+.analytics-bar-row {
+  display: grid;
+  grid-template-columns: 7rem 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+}
+
+.analytics-bar-row strong {
   font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.analytics-bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eee7dc;
+}
+
+.analytics-bar {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  transition: width 300ms ease;
+}
+
+.analytics-bar.first {
+  background: linear-gradient(90deg, #789c69, #4b7a50);
+}
+
+.analytics-bar.second {
+  background: linear-gradient(90deg, #e4bd71, #c18a39);
+}
+
+.analytics-bar.third {
+  background: linear-gradient(90deg, #d79a80, #b85e47);
+}
+
+.analytics-bar.average {
+  background: linear-gradient(90deg, #b97552, #8b3e2c);
+}
+
+.statistics-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 1rem;
 }
 
 .danger-icon {
@@ -1448,5 +1513,11 @@ h1 {
 
   .admin-tabs {
     flex-direction: column;
+  }
+
+  .analytics-bar-row {
+    grid-template-columns: 6.3rem 2.4rem minmax(0, 1fr);
+    gap: 0.4rem;
+    font-size: 0.75rem;
   }
 }
