@@ -550,6 +550,70 @@ h1 {
   background: #fffefa;
 }
 
+.yeshiva-name-field {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+.feedback-fields .yeshiva-name-field {
+  grid-column: 1 / -1;
+}
+
+.yeshiva-suggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% - 0.25rem);
+  inset-inline: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.yeshiva-suggestion {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text);
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+
+.yeshiva-suggestion:hover,
+.yeshiva-suggestion:focus-visible {
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+}
+
+.suggestion-empty,
+.field-validation {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.suggestion-empty {
+  padding: 0.55rem 0.7rem;
+}
+
+.field-validation.invalid {
+  color: #9d382f;
+}
+
+.modal-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .feedback-fields textarea {
   resize: vertical;
 }
@@ -832,6 +896,18 @@ h1 {
   box-shadow: 0 2px 8px rgba(83, 59, 35, 0.1);
 }
 
+.admin-tab,
+.managed-yeshiva,
+.text-button,
+.nav-button {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.admin-tab:hover,
+.text-button:hover {
+  border-color: rgba(169, 79, 55, 0.42);
+}
+
 .admin-header {
   align-items: center;
   margin-bottom: 1rem;
@@ -906,6 +982,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fffefa;
+  box-shadow: 0 4px 12px rgba(83, 59, 35, 0.04);
 }
 
 .managed-yeshivot-list {
@@ -925,6 +1002,11 @@ h1 {
   border-color: #d5a66d;
   background: #fbf0df;
   box-shadow: inset 4px 0 0 #c78d4c;
+}
+
+.managed-yeshiva.has-pending:hover {
+  border-color: #c78d4c;
+  box-shadow: inset 4px 0 0 #c78d4c, 0 8px 20px rgba(124, 79, 31, 0.08);
 }
 
 .managed-yeshiva > summary {

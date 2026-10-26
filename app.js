@@ -61,12 +61,13 @@ async function loadPendingRequests() {
   if (!supabaseClient || !state.adminAuthenticated) return;
   const { data, error } = await supabaseClient
     .from('submissions')
-    .select('id, yeshiva_name, request_type, notes, answers, created_at')
+    .select('id, yeshiva_id, yeshiva_name, request_type, notes, answers, created_at')
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
   if (error) throw error;
   state.pendingRequests = data.map((row) => ({
     id: row.id,
+    yeshivaId: row.yeshiva_id,
     yeshivaName: row.yeshiva_name,
     type: row.request_type,
     details: row.notes || '',
@@ -127,19 +128,23 @@ function getShareUrl() {
 }
 
 async function shareContent(title, text) {
-  const message = `${text}\n${getShareUrl()}`;
+  const url = getShareUrl();
 
   try {
-    if (navigator.share) {
-      await navigator.share({ title, text: message });
+    if (typeof navigator.share === 'function') {
+      await navigator.share({ title, text, url });
       return 'השיתוף נפתח.';
     }
 
-    await navigator.clipboard.writeText(message);
+    if (!navigator.clipboard?.writeText) {
+      throw new Error('Clipboard API is unavailable.');
+    }
+    await navigator.clipboard.writeText(`${title}\n\n${text}\n${url}`);
     return 'הקישור הועתק ללוח.';
   } catch (error) {
-    if (error.name === 'AbortError') return '';
-    return 'לא ניתן לשתף כרגע. אפשר להעתיק את כתובת האתר משורת הכתובת.';
+    if (error?.name === 'AbortError') return '';
+    console.error('לא ניתן לשתף או להעתיק ללוח.', error);
+    return 'השיתוף או ההעתקה ללוח נכשלו. אפשר להעתיק את כתובת האתר משורת הכתובת.';
   }
 }
 
@@ -402,14 +407,18 @@ function renderFeedbackModal() {
         <form id="feedback-form">
           <div class="feedback-fields">
             <label>סוג הפנייה
-              <select name="requestType" required>
+              <select name="requestType" id="feedback-request-type" required>
                 <option value="suggest">הצעת ישיבה חדשה</option>
                 <option value="update">עדכון פרטים של ישיבה</option>
               </select>
             </label>
-            <label>שם הישיבה
-              <input name="yeshivaName" type="text" required maxlength="120" />
-            </label>
+            <div class="yeshiva-name-field">
+              <label for="feedback-yeshiva-name">שם הישיבה</label>
+              <input name="yeshivaName" id="feedback-yeshiva-name" type="text" required maxlength="120" autocomplete="off" aria-autocomplete="list" aria-controls="yeshiva-suggestions" aria-expanded="false" />
+              <div class="yeshiva-suggestions hidden" id="yeshiva-suggestions" role="listbox"></div>
+              <p class="field-validation" id="yeshiva-validation" aria-live="polite"></p>
+            </div>
+            <input name="yeshivaId" id="feedback-yeshiva-id" type="hidden" />
             <label>הערות למנהל (לא חובה)
               <textarea name="details" rows="3" maxlength="2000"></textarea>
             </label>
@@ -432,14 +441,160 @@ function renderFeedbackModal() {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) closeModal();
   });
-  document.getElementById('feedback-form').addEventListener('submit', async (event) => {
+  const form = document.getElementById('feedback-form');
+  const requestType = document.getElementById('feedback-request-type');
+  const yeshivaNameInput = document.getElementById('feedback-yeshiva-name');
+  const yeshivaIdInput = document.getElementById('feedback-yeshiva-id');
+  const suggestions = document.getElementById('yeshiva-suggestions');
+  const validationMessage = document.getElementById('yeshiva-validation');
+  const submitButton = form.querySelector('button[type="submit"]');
+  let selectedYeshivaId = '';
+  let validationSequence = 0;
+  let nameCheckTimer;
+
+  const matchingYeshivot = (query) => {
+    const normalizedQuery = normalizeYeshivaName(query);
+    if (!normalizedQuery) return [];
+    return appData.yeshivot.filter((yeshiva) => [yeshiva.name, yeshiva.shortName]
+      .some((name) => normalizeYeshivaName(name).includes(normalizedQuery)));
+  };
+  const setValidation = (message, invalid = false) => {
+    validationMessage.textContent = message;
+    validationMessage.classList.toggle('invalid', invalid);
+    yeshivaNameInput.setAttribute('aria-invalid', String(invalid));
+  };
+  const clearSelection = () => {
+    selectedYeshivaId = '';
+    yeshivaIdInput.value = '';
+  };
+  const closeSuggestions = () => {
+    suggestions.classList.add('hidden');
+    yeshivaNameInput.setAttribute('aria-expanded', 'false');
+  };
+  const updateRequestFields = () => {
+    clearSelection();
+    setValidation('');
+    closeSuggestions();
+    if (requestType.value === 'update') {
+      yeshivaNameInput.placeholder = 'הקלד/י לחיפוש ובחר/י ישיבה מהרשימה';
+      yeshivaNameInput.setAttribute('role', 'combobox');
+      yeshivaNameInput.setAttribute('aria-required', 'true');
+    } else {
+      yeshivaNameInput.placeholder = 'שם הישיבה החדשה';
+      yeshivaNameInput.removeAttribute('role');
+      yeshivaNameInput.removeAttribute('aria-required');
+      validateSuggestedName();
+    }
+  };
+  const renderSuggestions = (items) => {
+    suggestions.innerHTML = items.length
+      ? items.map((yeshiva) => `<button class="yeshiva-suggestion" type="button" role="option" aria-selected="false" data-yeshiva-id="${escapeHtml(yeshiva.id)}">${escapeHtml(yeshiva.name)}</button>`).join('')
+      : '<p class="suggestion-empty">לא נמצאו ישיבות מתאימות.</p>';
+    suggestions.classList.remove('hidden');
+    yeshivaNameInput.setAttribute('aria-expanded', 'true');
+  };
+  const validateSuggestedName = () => {
+    const name = yeshivaNameInput.value.trim();
+    const sequence = ++validationSequence;
+    window.clearTimeout(nameCheckTimer);
+    if (requestType.value !== 'suggest' || !name) {
+      setValidation('');
+      submitButton.disabled = false;
+      return;
+    }
+
+    submitButton.disabled = true;
+    setValidation('בודק אם הישיבה כבר קיימת…');
+    nameCheckTimer = window.setTimeout(async () => {
+      try {
+        let existingYeshivot = appData.yeshivot;
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('site_content')
+            .select('yeshivot')
+            .eq('id', 'main')
+            .maybeSingle();
+          if (error) throw error;
+          if (data?.yeshivot) existingYeshivot = data.yeshivot;
+        }
+        if (sequence !== validationSequence) return;
+        const normalizedName = normalizeYeshivaName(name);
+        const duplicate = existingYeshivot.some((yeshiva) => [yeshiva.name, yeshiva.shortName]
+          .some((existingName) => normalizeYeshivaName(existingName) === normalizedName));
+        setValidation(duplicate ? 'ישיבה בשם זה כבר קיימת. בחר/י באפשרות עדכון.' : 'השם זמין להצעה.');
+        yeshivaNameInput.setAttribute('aria-invalid', String(duplicate));
+        submitButton.disabled = duplicate;
+      } catch (error) {
+        if (sequence !== validationSequence) return;
+        console.error('בדיקת שם הישיבה נכשלה.', error);
+        setValidation('לא ניתן לאמת את השם כרגע. נסה/י שוב.', true);
+        submitButton.disabled = true;
+      }
+    }, 250);
+  };
+
+  requestType.addEventListener('change', updateRequestFields);
+  yeshivaNameInput.addEventListener('input', () => {
+    clearSelection();
+    if (requestType.value === 'update') {
+      const items = matchingYeshivot(yeshivaNameInput.value);
+      setValidation(yeshivaNameInput.value.trim() ? 'בחר/י ישיבה מהרשימה כדי להמשיך.' : '');
+      submitButton.disabled = true;
+      if (yeshivaNameInput.value.trim()) renderSuggestions(items);
+      else closeSuggestions();
+    } else {
+      validateSuggestedName();
+    }
+  });
+  suggestions.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-yeshiva-id]');
+    if (!option) return;
+    const yeshiva = appData.yeshivot.find((item) => item.id === option.dataset.yeshivaId);
+    if (!yeshiva) {
+      setValidation('הישיבה שנבחרה אינה זמינה עוד. חפש/י שוב.', true);
+      clearSelection();
+      return;
+    }
+    selectedYeshivaId = yeshiva.id;
+    yeshivaIdInput.value = yeshiva.id;
+    yeshivaNameInput.value = yeshiva.name;
+    setValidation(`נבחרה: ${yeshiva.name}`);
+    submitButton.disabled = false;
+    closeSuggestions();
+  });
+  yeshivaNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeSuggestions();
+  });
+  modal.addEventListener('click', (event) => {
+    if (!suggestions.contains(event.target) && event.target !== yeshivaNameInput) closeSuggestions();
+  });
+  updateRequestFields();
+
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!supabaseClient) {
       showNotice('השליחה אינה זמינה כרגע. יש להגדיר חיבור למסד הנתונים.');
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
+    const type = String(formData.get('requestType'));
+    const submittedName = String(formData.get('yeshivaName') || '').trim();
+    if (type === 'update') {
+      const selectedYeshiva = appData.yeshivot.find((yeshiva) => yeshiva.id === selectedYeshivaId);
+      if (!selectedYeshiva || yeshivaIdInput.value !== selectedYeshiva.id || submittedName !== selectedYeshiva.name) {
+        showNotice('כדי לעדכן ישיבה, יש לבחור ישיבה תקפה מהרשימה.');
+        setValidation('יש לבחור ישיבה מהרשימה.', true);
+        return;
+      }
+    } else {
+      const duplicate = appData.yeshivot.some((yeshiva) => [yeshiva.name, yeshiva.shortName]
+        .some((name) => normalizeYeshivaName(name) === normalizeYeshivaName(submittedName)));
+      if (duplicate || submitButton.disabled) {
+        showNotice(duplicate ? 'הישיבה כבר קיימת. בחר/י באפשרות עדכון.' : 'יש להמתין לאימות שם הישיבה.');
+        return;
+      }
+    }
     const answers = Object.fromEntries(appData.questions.map((question) => [
       question.id,
       formData.get(`answer-${question.id}`)
@@ -448,16 +603,25 @@ function renderFeedbackModal() {
       showNotice('יש לענות על כל השאלות לפני שליחת הפנייה.');
       return;
     }
-    const { error } = await supabaseClient.from('submissions').insert({
-      yeshiva_name: formData.get('yeshivaName').trim(),
-      request_type: formData.get('requestType'),
-      notes: String(formData.get('details') || '').trim() || null,
-      answers,
-      status: 'pending'
-    });
-    if (error) {
-      showNotice('שליחת הפנייה נכשלה. נסה שוב מאוחר יותר.');
+    try {
+      const { error } = await supabaseClient.from('submissions').insert({
+        yeshiva_name: submittedName,
+        yeshiva_id: type === 'update' ? selectedYeshivaId : null,
+        request_type: type,
+        notes: String(formData.get('details') || '').trim() || null,
+        answers,
+        status: 'pending'
+      });
+      if (error) throw error;
+    } catch (error) {
       console.error('Submission insert failed.', error);
+      if (error.message?.includes('already exists')) {
+        showNotice('הישיבה כבר קיימת. בחר/י באפשרות עדכון.');
+      } else if (error.message?.includes('Updates must reference')) {
+        showNotice('הבחירה אינה תקפה עוד. בחר/י ישיבה מהרשימה ונסה/י שוב.');
+      } else {
+        showNotice('שליחת הפנייה נכשלה. בדוק/י את החיבור ונסה/י שוב.');
+      }
       return;
     }
 
@@ -557,6 +721,7 @@ function normalizeYeshivaName(name) {
 }
 
 function requestMatchesYeshiva(request, yeshiva) {
+  if (request.yeshivaId) return request.yeshivaId === yeshiva.id;
   const requestName = normalizeYeshivaName(request.yeshivaName);
   return [yeshiva.name, yeshiva.shortName, yeshiva.id]
     .some((name) => normalizeYeshivaName(name) === requestName);
@@ -648,6 +813,10 @@ async function applySubmissionGroup(requests) {
   const previousYeshivot = appData.yeshivot;
   const currentYeshivot = state.adminYeshivotDraft || appData.yeshivot;
   const matchingYeshiva = currentYeshivot.find((yeshiva) => requestMatchesYeshiva(requests[0], yeshiva));
+  if (!matchingYeshiva && requests.some((request) => request.type === 'update')) {
+    renderAdminPanel('yeshivot', 'הישיבה שאליה מתייחסת בקשת העדכון אינה קיימת עוד. לא ניתן להחיל את העדכון.');
+    return;
+  }
   const profileTags = deriveSubmissionTagWeights(requests);
 
   if (matchingYeshiva) {

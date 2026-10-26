@@ -14,6 +14,7 @@ create table if not exists public.admins (
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   yeshiva_name text not null check (length(trim(yeshiva_name)) between 1 and 120),
+  yeshiva_id text,
   request_type text not null check (request_type in ('suggest', 'update')),
   notes text check (notes is null or length(notes) <= 2000),
   answers jsonb not null check (jsonb_typeof(answers) = 'object'),
@@ -22,6 +23,9 @@ create table if not exists public.submissions (
   reviewed_at timestamptz,
   reviewed_by uuid references auth.users(id)
 );
+
+alter table public.submissions
+  add column if not exists yeshiva_id text;
 
 create index if not exists submissions_pending_created_at_idx
   on public.submissions (created_at)
@@ -53,8 +57,7 @@ set search_path = ''
 as $$
   select coalesce(
     jsonb_typeof(p_answers) = 'object'
-    and jsonb_object_length(p_answers) =and (select count(*) from jsonb_object_keys(p_answers))
-    = jsonb_array_length(content.questions) jsonb_array_length(content.questions)
+    and (select count(*) from jsonb_object_keys(p_answers)) = jsonb_array_length(content.questions)
     and not exists (
       select 1
       from jsonb_array_elements(content.questions) as q
@@ -70,6 +73,61 @@ as $$
   from public.site_content as content
   where content.id = 'main';
 $$;
+
+create or replace function public.validate_submission_target()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  content public.site_content%rowtype;
+begin
+  select *
+  into content
+  from public.site_content
+  where id = 'main';
+
+  if not found then
+    raise exception 'Site content has not been initialized.';
+  end if;
+
+  if new.request_type = 'suggest' then
+    if new.yeshiva_id is not null then
+      raise exception 'New yeshiva suggestions cannot reference an existing yeshiva.';
+    end if;
+
+    if exists (
+      select 1
+      from jsonb_array_elements(content.yeshivot) as item
+      where lower(btrim(new.yeshiva_name)) in (
+        lower(btrim(coalesce(item.value->>'name', ''))),
+        lower(btrim(coalesce(item.value->>'shortName', '')))
+      )
+    ) then
+      raise exception 'A yeshiva with this name already exists.';
+    end if;
+  elsif new.request_type = 'update' then
+    if new.yeshiva_id is null or not exists (
+      select 1
+      from jsonb_array_elements(content.yeshivot) as item
+      where item.value->>'id' = new.yeshiva_id
+        and lower(btrim(new.yeshiva_name)) in (
+          lower(btrim(coalesce(item.value->>'name', ''))),
+          lower(btrim(coalesce(item.value->>'shortName', '')))
+        )
+    ) then
+      raise exception 'Updates must reference an existing yeshiva.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists validate_submission_target_before_insert on public.submissions;
+create trigger validate_submission_target_before_insert
+  before insert on public.submissions
+  for each row execute function public.validate_submission_target();
 
 revoke all on function public.has_current_questionnaire_answers(jsonb) from public;
 grant execute on function public.has_current_questionnaire_answers(jsonb) to anon, authenticated;
