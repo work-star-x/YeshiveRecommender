@@ -316,6 +316,20 @@ h1 {
   line-height: 1.6;
 }
 
+.score-scale-note,
+.score-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.score-scale-note {
+  margin: 0.35rem 0 0;
+}
+
+.score-note {
+  margin: 0.35rem 0 0;
+}
+
 .result-score {
   display: flex;
   justify-content: space-between;

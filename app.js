@@ -98,7 +98,6 @@ const TAG_LABELS = {
   kollel: 'כולל',
   mishpacha: 'משפחה',
   classical_haredi: 'חרדי קלאסי',
-  yeshiva_ketana: 'ישיבה קטנה',
   traditional: 'מסורתי',
   formal: 'מסודר',
   quiet: 'שקט',
@@ -125,8 +124,6 @@ function initializeParameters(parameters = appData.parameters) {
   });
   appData.yeshivot.forEach((yeshiva) => {
     Object.keys(yeshiva.profileTags || {}).forEach((tag) => knownTags.add(tag));
-    [...(yeshiva.boostRules?.baselineTags || []), ...(yeshiva.boostRules?.avoidanceTags || [])]
-      .forEach((tag) => knownTags.add(tag));
   });
   const normalized = Array.isArray(parameters)
     ? parameters.filter((parameter) => parameter?.id).map((parameter) => ({
@@ -342,7 +339,7 @@ function buildUserProfile() {
 
     const weights = getQuestionAnswerWeights(question, optionId);
     Object.entries(weights).forEach(([parameterId, weight]) => {
-      if (!rawScores[parameterId]) return;
+      if (!Object.hasOwn(rawScores, parameterId)) return;
       rawScores[parameterId] += Number(weight || 0);
     });
   });
@@ -356,6 +353,15 @@ function buildUserProfile() {
   );
 }
 
+const MAHANAYIM_THRESHOLDS = {
+  cultural_openness: 6,
+  conservatism_authority: 4,
+  classic_study: 5
+};
+
+const MAHANAYIM_BONUS = 8;
+const DISPLAY_SCORE_FLOOR = 60;
+
 function computeScores(limit = 3) {
   const userProfile = buildUserProfile();
 
@@ -368,11 +374,19 @@ function computeScores(limit = 3) {
       });
 
       const averageDeviation = parameterValues.reduce((sum, value) => sum + value, 0) / Math.max(1, parameterValues.length);
-      const score = (1 - (averageDeviation / 9)) * 100;
+      const baseScore = clamp((1 - (averageDeviation / 9)) * 100, 0, 100);
+      const receivesMahanayimBonus = yeshiva.id === 'machanim'
+        && userProfile.cultural_openness >= MAHANAYIM_THRESHOLDS.cultural_openness
+        && userProfile.conservatism_authority <= MAHANAYIM_THRESHOLDS.conservatism_authority
+        && userProfile.classic_study <= MAHANAYIM_THRESHOLDS.classic_study;
+      const conditionalBonus = receivesMahanayimBonus ? MAHANAYIM_BONUS : 0;
+      const adjustedScore = clamp(baseScore + conditionalBonus, 0, 100);
+      const displayScore = DISPLAY_SCORE_FLOOR + (adjustedScore / 100) * (100 - DISPLAY_SCORE_FLOOR);
 
       return {
         ...yeshiva,
-        score: Number(clamp(score, 0, 100).toFixed(1)),
+        score: Number(Math.min(displayScore, 100).toFixed(1)),
+        conditionalBonus,
         userProfile
       };
     })
@@ -393,6 +407,7 @@ function renderResults() {
       <div class="results-header">
         <h2>ההתאמות הטובות ביותר</h2>
         <p>על פי סגנון הלימוד, הערכים והיעדים שלך.</p>
+        <p class="score-scale-note">אחוזי ההתאמה מוצגים בסולם חזותי מותאם (60%–100%).</p>
       </div>
 
       <div class="top-three">
@@ -409,11 +424,12 @@ function renderResults() {
                   <span class="score-label">התאמה</span>
                   <span class="score-value">${Math.round(yeshiva.score)}%</span>
                 </div>
+                ${yeshiva.conditionalBonus ? '<p class="score-note">כולל תוספת התאמה מותנית</p>' : ''}
 
                 <div class="result-meta">
                   ${
                     Object.entries(yeshiva.profileTags)
-                      .filter(([_, weight]) => weight >= 2.4)
+                      .sort((left, right) => right[1] - left[1])
                       .slice(0, 3)
                       .map(([tag]) => `<span class="meta-pill">${escapeHtml(formatTagLabel(tag))}</span>`)
                       .join('')
@@ -868,7 +884,10 @@ function applyRequestsToYeshiva(yeshiva, requests) {
   const updatedWeights = deriveSubmissionTagWeights(requests);
   return {
     ...yeshiva,
-    profileTags: { ...yeshiva.profileTags, ...updatedWeights }
+    profileTags: {
+      ...yeshiva.profileTags,
+      ...Object.fromEntries(Object.entries(updatedWeights).map(([tag, value]) => [tag, clamp(value, 1, 10)]))
+    }
   };
 }
 
@@ -889,15 +908,8 @@ function createYeshivaFromRequest(request, profileTags) {
     matchSummary: 'הפרופיל נוצר על בסיס הצעת משתמש ויש לבדוק ולאמת את פרטיו.',
     profileTags: Object.fromEntries(appData.parameters.map((parameter) => [
       parameter.id,
-      profileTags[parameter.id] || 0
-    ])),
-    boostRules: {
-      enabled: false,
-      baselineTags: [],
-      avoidanceTags: [],
-      minMatches: 3,
-      bonus: 0
-    }
+      clamp(Number(profileTags[parameter.id] || 5), 1, 10)
+    ]))
   };
 }
 
@@ -936,7 +948,7 @@ async function applyParameterSuggestion(yeshivaId, requestId, tag) {
   if (delta === undefined) return;
   const previousYeshivot = appData.yeshivot;
   appData.yeshivot = currentYeshivot.map((item) => item.id === yeshivaId
-    ? { ...item, profileTags: { ...item.profileTags, [tag]: Math.max(0, Math.round(((item.profileTags[tag] || 0) + delta) * 10) / 10) } }
+    ? { ...item, profileTags: { ...item.profileTags, [tag]: clamp(Math.round(((item.profileTags[tag] || 5) + delta) * 10) / 10, 1, 10) } }
     : item);
   try {
     await saveCloudContent();
@@ -958,7 +970,7 @@ async function applyAllParameterSuggestions(yeshiva, requests) {
     if (item.id !== yeshiva.id) return item;
     const profileTags = { ...item.profileTags };
     suggestions.forEach(({ tag, averageDelta }) => {
-      profileTags[tag] = Math.max(0, Math.round(((profileTags[tag] || 0) + averageDelta) * 10) / 10);
+      profileTags[tag] = clamp(Math.round(((profileTags[tag] || 5) + averageDelta) * 10) / 10, 1, 10);
     });
     return { ...item, profileTags };
   });
@@ -1136,22 +1148,7 @@ function renderYeshivaEditor(yeshiva, index) {
           `}).join('')}
         </div>
       </section>
-      <details class="boost-editor">
-        <summary>הגדרות בונוס התאמה</summary>
-        <label class="toggle-field"><input data-boost-field="enabled" type="checkbox" ${yeshiva.boostRules?.enabled ? 'checked' : ''} /> הפעל בונוס</label>
-        <div class="editor-fields">
-          <label>בונוס באחוזים<input data-boost-field="bonus" type="number" min="0" max="20" step="0.1" value="${escapeHtml(yeshiva.boostRules?.bonus ?? 0)}" /></label>
-          <label>מספר תגיות בסיס דרוש<input data-boost-field="minMatches" type="number" min="0" max="20" step="1" value="${escapeHtml(yeshiva.boostRules?.minMatches ?? 0)}" /></label>
-          <fieldset class="parameter-checkboxes wide-field">
-            <legend>תגיות בסיס לבונוס</legend>
-            <div class="parameter-checkbox-list">${appData.parameters.map((parameter) => `<label><input data-boost-field="baselineTags" type="checkbox" value="${escapeHtml(parameter.id)}" ${(yeshiva.boostRules?.baselineTags || []).includes(parameter.id) ? 'checked' : ''} />${escapeHtml(parameter.label)}</label>`).join('')}</div>
-          </fieldset>
-          <fieldset class="parameter-checkboxes wide-field">
-            <legend>תגיות שמבטלות בונוס</legend>
-            <div class="parameter-checkbox-list">${appData.parameters.map((parameter) => `<label><input data-boost-field="avoidanceTags" type="checkbox" value="${escapeHtml(parameter.id)}" ${(yeshiva.boostRules?.avoidanceTags || []).includes(parameter.id) ? 'checked' : ''} />${escapeHtml(parameter.label)}</label>`).join('')}</div>
-          </fieldset>
-        </div>
-      </details>
+      ${yeshiva.id === 'machanim' ? '<p class="muted-note">תוספת התאמה מותנית: פתיחות תרבותית 6 ומעלה, שמרנות 4 ומטה, ואופי לימוד 5 ומטה.</p>' : ''}
       <button class="text-button danger-button remove-yeshiva-button" type="button" data-action="remove-yeshiva" data-yeshiva-index="${index}">הסר ישיבה</button>
     </section>
   `;
@@ -1216,9 +1213,6 @@ function readYeshivotFromEditor() {
       profileTags[row.dataset.parameterId] = clampedValue;
     });
     const readField = (name) => editor.querySelector(`[data-yeshiva-field="${name}"]`).value.trim();
-    const readBoost = (name) => editor.querySelector(`[data-boost-field="${name}"]`);
-    const readTags = (name) => [...editor.querySelectorAll(`[data-boost-field="${name}"]:checked`)].map((input) => input.value);
-
     return {
       id: readField('id'),
       name: readField('name'),
@@ -1226,14 +1220,7 @@ function readYeshivotFromEditor() {
       tagline: readField('tagline'),
       description: editor.querySelector('[data-yeshiva-field="description"]').value.trim(),
       matchSummary: readField('matchSummary'),
-      profileTags,
-      boostRules: {
-        enabled: readBoost('enabled').checked,
-        bonus: Number(readBoost('bonus').value) || 0,
-        minMatches: Number(readBoost('minMatches').value) || 0,
-        baselineTags: readTags('baselineTags'),
-        avoidanceTags: readTags('avoidanceTags')
-      }
+      profileTags
     };
   });
 }
@@ -1436,8 +1423,8 @@ function validateYeshivot(yeshivot) {
   if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
     throw new Error('מזהי הישיבות חייבים להיות מלאים וייחודיים.');
   }
-  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 0 || weight > 100))) {
-    throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים בין 0 ל-100.');
+  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 1 || weight > 10))) {
+    throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים בין 1 ל-10.');
   }
 }
 
@@ -1578,8 +1565,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
         yeshivotDraft.push({
           id: `yeshiva-${Date.now()}`,
           name: '', shortName: '', tagline: '', description: '', matchSummary: '',
-          profileTags: {},
-          boostRules: { enabled: false, bonus: 0, minMatches: 0, baselineTags: [], avoidanceTags: [] }
+          profileTags: Object.fromEntries(appData.parameters.map((parameter) => [parameter.id, 5]))
         });
       } else if (button.dataset.action === 'remove-yeshiva') {
         yeshivotDraft.splice(yeshivaIndex, 1);
@@ -1688,15 +1674,10 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
       }));
       appData.yeshivot = yeshivot.map((yeshiva) => {
         const profileTags = Object.fromEntries(Object.entries(yeshiva.profileTags).filter(([tag]) => parameterIds.has(tag)));
-        addedIds.forEach((tag) => { profileTags[tag] = 0; });
+        addedIds.forEach((tag) => { profileTags[tag] = 5; });
         return {
           ...yeshiva,
-          profileTags,
-          boostRules: {
-            ...yeshiva.boostRules,
-            baselineTags: (yeshiva.boostRules?.baselineTags || []).filter((tag) => parameterIds.has(tag)),
-            avoidanceTags: (yeshiva.boostRules?.avoidanceTags || []).filter((tag) => parameterIds.has(tag))
-          }
+          profileTags
         };
       });
       await saveCloudContent();

@@ -136,94 +136,191 @@ window.APP_DATA = {
   ],
   yeshivot: [
     {
-      id: 'machanaim',
-      name: 'ישיבת מכמנים',
-      shortName: 'מכמנים',
-      tagline: 'סביבה מעורבת, מסודרת ופתוחה לחשיבה',
-      description: 'ישיבה המשלבת לימוד רציני עם מעורבות חברתית, פתיחות תרבותית והפנמה של מטרות ציבוריות.',
-      matchSummary: 'התאמה טובה לתלמידים שמחפשים שילוב של תורה, חברה, מנהיגות ועמידה מול העולם המודרני.',
-      profileTags: {
-        military: 8.1,
-        social_engagement: 8.4,
-        cultural_openness: 7.8,
-        conservatism_authority: 6.2,
-        classic_study: 7.5,
-        personal_attention: 6.9,
-        physical_conditions: 7.2
-      },
-      boostRules: { enabled: false, baselineTags: [], avoidanceTags: [], minMatches: 0, bonus: 0 }
-    },
-    {
       id: 'merkaz_harav',
       name: 'ישיבת מרכז הרב',
       shortName: 'מרכז הרב',
-      tagline: 'לימוד קלאסי עם מסגרת ערכית ברורה',
-      description: 'דגם שמחזק לימוד עיוני, חיזוק תורה ומוסר ונתיב מחשבתי יציב.',
-      matchSummary: 'מתאים לתלמידים שמעריכים לימוד רציני, מסגרת ערכית, ועמדות שמרניות ומובנות.',
+      tagline: 'לימוד קלאסי ושמרנות גבוהה',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף שמרנות ולימוד קלאסי.',
       profileTags: {
-        military: 6.4,
-        social_engagement: 5.8,
-        cultural_openness: 6.1,
-        conservatism_authority: 8.6,
-        classic_study: 8.9,
-        personal_attention: 6.3,
-        physical_conditions: 6.0
-      },
-      boostRules: { enabled: false, baselineTags: [], avoidanceTags: [], minMatches: 0, bonus: 0 }
+        military: 3,
+        social_engagement: 3,
+        cultural_openness: 1,
+        conservatism_authority: 10,
+        classic_study: 10,
+        personal_attention: 3,
+        physical_conditions: 5
+      }
     },
     {
       id: 'har_etzion',
       name: 'ישיבת הר עציון',
       shortName: 'הר עציון',
-      tagline: 'אינטלקטואליות, עומק ושיח פתוח',
-      description: 'ישיבה המעדיפה חשיבה, דיון, חקר והעמקת ההבנה לצד מסגרת לימודית מבוססת.',
-      matchSummary: 'מתאימה לתלמידים שמחפשים לימוד אינטלקטואלי עמוק, דיון פתוח ומגוון רעיוני.',
+      tagline: 'מעורבות חברתית, פתיחות ולימוד מעמיק',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמחפש שילוב של מעורבות, פתיחות ולימוד קלאסי.',
       profileTags: {
-        military: 6.8,
-        social_engagement: 7.1,
-        cultural_openness: 8.3,
-        conservatism_authority: 6.7,
-        classic_study: 8.1,
-        personal_attention: 6.9,
-        physical_conditions: 6.8
-      },
-      boostRules: { enabled: false, baselineTags: [], avoidanceTags: [], minMatches: 0, bonus: 0 }
+        military: 8,
+        social_engagement: 8,
+        cultural_openness: 8,
+        conservatism_authority: 4,
+        classic_study: 8,
+        personal_attention: 6,
+        physical_conditions: 7
+      }
     },
     {
-      id: 'yeshivat_aderet',
-      name: 'ישיבת אדרת',
-      shortName: 'אדרת',
-      tagline: 'קהילה חמה עם תשומת לב אישית',
-      description: 'סביבה קהילתית, חמה ומכילה, עם דגש על קשר אישי בין התלמידים לרבנים.',
-      matchSummary: 'מתאימה לתלמידים שמעריכים חמימות, קהילה, יחס אישי ומסגרת לימודית מאוזנת.',
+      id: 'kerem_beyavne',
+      name: 'ישיבת כרם ביבנה',
+      shortName: 'כרם ביבנה',
+      tagline: 'לימוד קלאסי ומסגרת שמרנית',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף לימוד קלאסי ושמרנות לצד מעורבות מתונה.',
       profileTags: {
-        military: 6.2,
-        social_engagement: 7.9,
-        cultural_openness: 7.0,
-        conservatism_authority: 6.5,
-        classic_study: 7.2,
-        personal_attention: 8.7,
-        physical_conditions: 7.4
-      },
-      boostRules: { enabled: false, baselineTags: [], avoidanceTags: [], minMatches: 0, bonus: 0 }
+        military: 6,
+        social_engagement: 6,
+        cultural_openness: 3,
+        conservatism_authority: 8,
+        classic_study: 10,
+        personal_attention: 6,
+        physical_conditions: 6
+      }
     },
     {
-      id: 'yeshiva_ketana',
-      name: 'ישיבה קטנה',
-      shortName: 'ישיבה קטנה',
-      tagline: 'ישיבה קטנה, יחס אישי ומסגרת קלאסית',
-      description: 'מסגרת מצומצמת עם יחס אישי גבוה, שגרה קלאסית ושימת דגש על לימוד טקסטואלי מסודר.',
-      matchSummary: 'מתאימה לתלמידים שמעדיפים ישיבה קטנה, קשר אישי ועמידה על מסגרת לימודית קלאסית.',
+      id: 'shaalvim',
+      name: 'ישיבת שעלבים',
+      shortName: 'שעלבים',
+      tagline: 'פרופיל מאוזן עם דגש על לימוד קלאסי',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמחפש איזון בין הפרמטרים וסגנון לימוד קלאסי.',
       profileTags: {
-        military: 5.7,
-        social_engagement: 6.4,
-        cultural_openness: 5.2,
-        conservatism_authority: 7.8,
-        classic_study: 8.4,
-        personal_attention: 9.1,
-        physical_conditions: 6.5
-      },
-      boostRules: { enabled: false, baselineTags: [], avoidanceTags: [], minMatches: 0, bonus: 0 }
+        military: 6,
+        social_engagement: 6,
+        cultural_openness: 6,
+        conservatism_authority: 6,
+        classic_study: 8,
+        personal_attention: 6,
+        physical_conditions: 7
+      }
+    },
+    {
+      id: 'otniel',
+      name: 'ישיבת עתניאל',
+      shortName: 'עתניאל',
+      tagline: 'מעורבות גבוהה, פתיחות ויחס אישי',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף מעורבות ופתיחות גבוהות לצד יחס אישי.',
+      profileTags: {
+        military: 8,
+        social_engagement: 10,
+        cultural_openness: 8,
+        conservatism_authority: 3,
+        classic_study: 6,
+        personal_attention: 8,
+        physical_conditions: 6
+      }
+    },
+    {
+      id: 'har_bracha',
+      name: 'ישיבת הר ברכה',
+      shortName: 'הר ברכה',
+      tagline: 'מעורבות גבוהה ושמרנות גבוהה',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף מעורבות לצד שמרנות ולימוד קלאסי.',
+      profileTags: {
+        military: 6,
+        social_engagement: 8,
+        cultural_openness: 3,
+        conservatism_authority: 10,
+        classic_study: 8,
+        personal_attention: 6,
+        physical_conditions: 5
+      }
+    },
+    {
+      id: 'siach_yitzchak',
+      name: 'ישיבת שיח יצחק',
+      shortName: 'שיח יצחק',
+      tagline: 'פתיחות ויחס אישי גבוהים',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף פתיחות, יחס אישי ומעורבות גבוהים.',
+      profileTags: {
+        military: 3,
+        social_engagement: 8,
+        cultural_openness: 10,
+        conservatism_authority: 1,
+        classic_study: 3,
+        personal_attention: 10,
+        physical_conditions: 7
+      }
+    },
+    {
+      id: 'shavei_hevron',
+      name: 'ישיבת שבי חברון',
+      shortName: 'שבי חברון',
+      tagline: 'לימוד קלאסי ושמרנות גבוהה',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף שמרנות ולימוד קלאסי.',
+      profileTags: {
+        military: 3,
+        social_engagement: 3,
+        cultural_openness: 1,
+        conservatism_authority: 10,
+        classic_study: 10,
+        personal_attention: 3,
+        physical_conditions: 5
+      }
+    },
+    {
+      id: 'hesder_tzfat',
+      name: 'ישיבת ההסדר צפת',
+      shortName: 'ההסדר צפת',
+      tagline: 'שירות ומעורבות חברתית גבוהים',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף שירות ומעורבות חברתית גבוהים.',
+      profileTags: {
+        military: 10,
+        social_engagement: 8,
+        cultural_openness: 6,
+        conservatism_authority: 6,
+        classic_study: 6,
+        personal_attention: 8,
+        physical_conditions: 5
+      }
+    },
+    {
+      id: 'tekoa',
+      name: 'ישיבת תקוע',
+      shortName: 'תקוע',
+      tagline: 'פתיחות תרבותית גבוהה ושמרנות נמוכה',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה למי שמעדיף פתיחות תרבותית גבוהה לצד לימוד קלאסי.',
+      profileTags: {
+        military: 3,
+        social_engagement: 6,
+        cultural_openness: 10,
+        conservatism_authority: 1,
+        classic_study: 8,
+        personal_attention: 6,
+        physical_conditions: 6
+      }
+    },
+    {
+      id: 'machanim',
+      name: 'ישיבת מחנים',
+      shortName: 'מחנים',
+      tagline: 'פתיחות תרבותית ויחס אישי גבוהים',
+      description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
+      matchSummary: 'מתאימה במיוחד למי שפרופילו משלב פתיחות גבוהה, שמרנות נמוכה ולימוד פחות קלאסי.',
+      profileTags: {
+        military: 5,
+        social_engagement: 7,
+        cultural_openness: 9,
+        conservatism_authority: 2,
+        classic_study: 4,
+        personal_attention: 9,
+        physical_conditions: 7
+      }
     }
   ]
 };
