@@ -332,8 +332,17 @@ function getQuestionAnswerWeights(question, optionId) {
 function buildUserProfile() {
   const parameterIds = (appData.parameters || []).map((parameter) => parameter.id);
   const rawScores = Object.fromEntries(parameterIds.map((id) => [id, 0]));
+  const parameterBounds = Object.fromEntries(parameterIds.map((id) => [id, { min: 0, max: 0 }]));
 
   appData.questions.forEach((question) => {
+    const optionWeights = question.options.map((option) => getQuestionAnswerWeights(question, option.id));
+    parameterIds.forEach((parameterId) => {
+      const values = optionWeights.map((weights) => Number(weights[parameterId] || 0));
+      if (!values.some((value) => value !== 0)) return;
+      parameterBounds[parameterId].min += Math.min(...values);
+      parameterBounds[parameterId].max += Math.max(...values);
+    });
+
     const optionId = state.answers[question.id];
     if (!optionId) return;
 
@@ -347,7 +356,8 @@ function buildUserProfile() {
   return Object.fromEntries(
     parameterIds.map((parameterId) => {
       const raw = Number(rawScores[parameterId] || 0);
-      const normalized = clamp(5 + (raw / 9), 1, 10);
+      const { min, max } = parameterBounds[parameterId];
+      const normalized = max > min ? 1 + ((raw - min) / (max - min)) * 9 : 5;
       return [parameterId, Number(normalized.toFixed(1))];
     })
   );
@@ -356,7 +366,7 @@ function buildUserProfile() {
 const MAHANAYIM_THRESHOLDS = {
   cultural_openness: 6,
   conservatism_authority: 4,
-  classic_study: 5
+  classic_study: 4
 };
 
 const MAHANAYIM_BONUS = 8;
@@ -1148,7 +1158,7 @@ function renderYeshivaEditor(yeshiva, index) {
           `}).join('')}
         </div>
       </section>
-      ${yeshiva.id === 'machanim' ? '<p class="muted-note">תוספת התאמה מותנית: פתיחות תרבותית 6 ומעלה, שמרנות 4 ומטה, ואופי לימוד 5 ומטה.</p>' : ''}
+      ${yeshiva.id === 'machanim' ? '<p class="muted-note">תוספת התאמה מותנית: פתיחות תרבותית 6 ומעלה, שמרנות 4 ומטה, ואופי לימוד 4 ומטה.</p>' : ''}
       <button class="text-button danger-button remove-yeshiva-button" type="button" data-action="remove-yeshiva" data-yeshiva-index="${index}">הסר ישיבה</button>
     </section>
   `;
