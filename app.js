@@ -117,7 +117,12 @@ const TAG_LABELS = {
 
 function initializeParameters(parameters = appData.parameters) {
   const knownTags = new Set(Array.isArray(parameters) ? [] : Object.keys(TAG_LABELS));
-  appData.questions.forEach((question) => question.options.forEach((option) => option.tags.forEach((tag) => knownTags.add(tag))));
+  appData.questions.forEach((question) => {
+    question.options.forEach((option) => {
+      (option.tags || []).forEach((tag) => knownTags.add(tag));
+      Object.keys(option.weights || {}).forEach((tag) => knownTags.add(tag));
+    });
+  });
   appData.yeshivot.forEach((yeshiva) => {
     Object.keys(yeshiva.profileTags || {}).forEach((tag) => knownTags.add(tag));
     [...(yeshiva.boostRules?.baselineTags || []), ...(yeshiva.boostRules?.avoidanceTags || [])]
@@ -126,12 +131,17 @@ function initializeParameters(parameters = appData.parameters) {
   const normalized = Array.isArray(parameters)
     ? parameters.filter((parameter) => parameter?.id).map((parameter) => ({
       id: String(parameter.id),
-      label: String(parameter.label || TAG_LABELS[parameter.id] || formatTagLabel(parameter.id))
+      label: String(parameter.label || TAG_LABELS[parameter.id] || formatTagLabel(parameter.id)),
+      description: String(parameter.description || '')
     }))
     : [];
   const existingIds = new Set(normalized.map((parameter) => parameter.id));
   knownTags.forEach((id) => {
-    if (!existingIds.has(id)) normalized.push({ id, label: TAG_LABELS[id] || id.replace(/_/g, ' ') });
+    if (!existingIds.has(id)) normalized.push({
+      id,
+      label: TAG_LABELS[id] || id.replace(/_/g, ' '),
+      description: ''
+    });
   });
   appData.parameters = normalized.sort((left, right) => left.label.localeCompare(right.label, 'he'));
 }
@@ -211,9 +221,9 @@ function showNotice(message) {
 function renderWelcome() {
   root.innerHTML = `
     <section class="welcome-panel">
-      <span class="welcome-kicker">2 דקות</span>
-      <h2>נמצא את המקום<br />שמתאים לך</h2>
-      <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך.</p>
+      <span class="welcome-kicker">2 דקות ו...</span>
+      <h2>נמצא את הישיבה<br />שתתאים לך</h2>
+      <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
       <div class="welcome-actions">
         <button class="nav-button primary start-button" type="button" id="start-button">התחל</button>
         <button class="nav-button secondary share-button" type="button" id="share-app-button" aria-label="שתף את הכלי" title="שתף">
@@ -295,64 +305,78 @@ function buildQuestionMarkup(question, index) {
 
 function getSelectedTags() {
   const tags = new Set();
+  appData.questions.forEach((question) => {
+    const optionId = state.answers[question.id];
+    if (!optionId) return;
+    const selectedOption = question.options.find((option) => option.id === optionId);
+    if (!selectedOption) return;
+    (selectedOption.tags || []).forEach((tag) => tags.add(tag));
+    Object.keys(selectedOption.weights || {}).forEach((tag) => tags.add(tag));
+  });
+  return tags;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getQuestionAnswerWeights(question, optionId) {
+  if (!question || !optionId) return {};
+  const option = question.options.find((item) => item.id === optionId);
+  if (!option) return {};
+  if (option.weights && Object.keys(option.weights).length) {
+    return { ...option.weights };
+  }
+  const fallback = {};
+  (option.tags || []).forEach((tag) => { fallback[tag] = 1; });
+  return fallback;
+}
+
+function buildUserProfile() {
+  const parameterIds = (appData.parameters || []).map((parameter) => parameter.id);
+  const rawScores = Object.fromEntries(parameterIds.map((id) => [id, 0]));
 
   appData.questions.forEach((question) => {
     const optionId = state.answers[question.id];
     if (!optionId) return;
 
-    const selectedOption = question.options.find((option) => option.id === optionId);
-    if (!selectedOption) return;
-
-    selectedOption.tags.forEach((tag) => tags.add(tag));
+    const weights = getQuestionAnswerWeights(question, optionId);
+    Object.entries(weights).forEach(([parameterId, weight]) => {
+      if (!rawScores[parameterId]) return;
+      rawScores[parameterId] += Number(weight || 0);
+    });
   });
 
-  return tags;
-}
-
-function classifyMachanaimBoost(tags) {
-  const machanaim = appData.yeshivot.find((yeshiva) => yeshiva.id === 'machanaim');
-  if (!machanaim?.boostRules?.enabled) return 0;
-
-  const baseline = machanaim.boostRules.baselineTags || [];
-  const avoidance = machanaim.boostRules.avoidanceTags || [];
-
-  const baselineMatches = baseline.filter((tag) => tags.has(tag)).length;
-  const avoidanceMatch = avoidance.some((tag) => tags.has(tag));
-
-  if (avoidanceMatch) {
-    return 0;
-  }
-
-  return baselineMatches >= machanaim.boostRules.minMatches
-    ? machanaim.boostRules.bonus
-    : 0;
+  return Object.fromEntries(
+    parameterIds.map((parameterId) => {
+      const raw = Number(rawScores[parameterId] || 0);
+      const normalized = clamp(5 + (raw / 9), 1, 10);
+      return [parameterId, Number(normalized.toFixed(1))];
+    })
+  );
 }
 
 function computeScores(limit = 3) {
-  const selectedTags = getSelectedTags();
-  const machanaimBoost = classifyMachanaimBoost(selectedTags);
+  const userProfile = buildUserProfile();
 
   return appData.yeshivot
     .map((yeshiva) => {
-      let weightedMatch = 0;
-      const maxProfileWeight = Object.values(yeshiva.profileTags).reduce((sum, weight) => sum + weight, 0);
-
-      Object.entries(yeshiva.profileTags).forEach(([tag, weight]) => {
-        if (selectedTags.has(tag)) {
-          weightedMatch += weight;
-        }
+      const parameterValues = appData.parameters.map((parameter) => {
+        const userValue = Number(userProfile[parameter.id] || 5);
+        const yeshivaValue = Number(yeshiva.profileTags?.[parameter.id] || 5);
+        return Math.abs(userValue - yeshivaValue);
       });
 
-      const normalizedScore = maxProfileWeight > 0
-        ? Math.min(100, (weightedMatch / maxProfileWeight) * 100)
-        : 0;
+      const averageDeviation = parameterValues.reduce((sum, value) => sum + value, 0) / Math.max(1, parameterValues.length);
+      const score = (1 - (averageDeviation / 9)) * 100;
 
       return {
         ...yeshiva,
-        score: Number(Math.min(100, normalizedScore + (yeshiva.id === 'machanaim' ? machanaimBoost : 0)).toFixed(1))
+        score: Number(clamp(score, 0, 100).toFixed(1)),
+        userProfile
       };
     })
-    .sort((a, b) => b.score - a.score)
+    .sort((left, right) => right.score - left.score)
     .slice(0, limit);
 }
 
@@ -1081,10 +1105,13 @@ function renderYeshivaEditor(yeshiva, index) {
         <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="2">${escapeHtml(yeshiva.description || '')}</textarea></label>
       </div>
       <section class="profile-weights">
-        <div class="section-heading"><h4>פרמטרים ומשקלים</h4><span class="muted-note">הגדרות פרמטרים מנוהלות בלשונית נפרדת</span></div>
+        <div class="section-heading">
+          <h4>פרמטרים ומשקלים</h4>
+          <span class="muted-note">כל פרמטר נע בין 1 ל-10</span>
+        </div>
         <div class="weight-list">
-          ${appData.parameters.map(({ id: tag, label }) => {
-            const weight = yeshiva.profileTags[tag] || 0;
+          ${appData.parameters.map(({ id: tag, label, description }) => {
+            const weight = Number(yeshiva.profileTags?.[tag] ?? 5);
             const suggestion = suggestionsByTag.get(tag);
             const suggestionDelta = suggestion?.averageDelta || 0;
             const deltaClass = suggestionDelta > 0 ? 'positive' : suggestionDelta < 0 ? 'negative' : 'neutral';
@@ -1096,10 +1123,13 @@ function renderYeshivaEditor(yeshiva, index) {
                 : '<span class="muted-note">אין הצעה ממתינה</span>';
             return `
             <div class="weight-row" data-weight-row data-parameter-id="${escapeHtml(tag)}" data-parameter-weight="${weight}">
-              <span class="parameter-name">${escapeHtml(label)}</span>
+              <div class="parameter-name-wrap">
+                <span class="parameter-name">${escapeHtml(label)}</span>
+                <span class="parameter-subtext">${escapeHtml(description || '')}</span>
+              </div>
               <label class="parameter-weight-field">
                 <span class="sr-only">משקל ${escapeHtml(label)}</span>
-                <input class="parameter-weight" data-weight-field="weight" type="number" min="0" max="100" step="0.1" value="${Number(weight).toFixed(1)}" required />
+                <input class="parameter-weight" data-weight-field="weight" type="number" min="1" max="10" step="0.1" value="${Number(weight).toFixed(1)}" required />
               </label>
               ${suggestionControl}
             </div>
@@ -1181,7 +1211,9 @@ function readYeshivotFromEditor() {
   return [...root.querySelectorAll('[data-yeshiva-editor]')].map((editor) => {
     const profileTags = {};
     editor.querySelectorAll('[data-weight-row]').forEach((row) => {
-      profileTags[row.dataset.parameterId] = Number(row.querySelector('[data-weight-field="weight"]').value);
+      const rawValue = Number(row.querySelector('[data-weight-field="weight"]').value);
+      const clampedValue = Number(Math.min(10, Math.max(1, Number.isFinite(rawValue) ? rawValue : 5)).toFixed(1));
+      profileTags[row.dataset.parameterId] = clampedValue;
     });
     const readField = (name) => editor.querySelector(`[data-yeshiva-field="${name}"]`).value.trim();
     const readBoost = (name) => editor.querySelector(`[data-boost-field="${name}"]`);
@@ -1215,6 +1247,9 @@ function renderParameterEditor(parameter, index) {
       <label>שם לתצוגה
         <input data-parameter-field="label" value="${escapeHtml(parameter.label)}" required />
       </label>
+      <label>הסבר קטן
+        <input data-parameter-field="description" value="${escapeHtml(parameter.description || '')}" />
+      </label>
       <button class="text-button danger-button" type="button" data-parameter-action="remove" data-parameter-index="${index}">הסר פרמטר מכל המערכת</button>
     </article>
   `;
@@ -1223,7 +1258,8 @@ function renderParameterEditor(parameter, index) {
 function readParametersFromEditor() {
   return [...root.querySelectorAll('[data-parameter-card]')].map((card) => ({
     id: card.querySelector('[data-parameter-field="id"]').value.trim(),
-    label: card.querySelector('[data-parameter-field="label"]').value.trim()
+    label: card.querySelector('[data-parameter-field="label"]').value.trim(),
+    description: card.querySelector('[data-parameter-field="description"]')?.value.trim() || ''
   }));
 }
 
@@ -1241,7 +1277,15 @@ function validateParameters(parameters) {
 function renderStatisticsPanel() {
   if (state.adminStatsError) return `<section class="statistics-panel"><p class="admin-message">${escapeHtml(state.adminStatsError)}</p></section>`;
   if (!state.adminStats) return '<section class="statistics-panel"><p class="empty-state">טוען נתונים מצטברים…</p></section>';
-  const analyticsById = new Map((state.adminStats.yeshivot || []).map((item) => [item.yeshiva_id, item]));
+
+  const stats = state.adminStats || {};
+  const shareMetrics = [
+    { label: 'דף הבית', value: Number(stats.home_shares || 0) },
+    { label: 'עמוד התוצאות', value: Number(stats.results_shares || 0) }
+  ];
+  const maxShare = Math.max(1, ...shareMetrics.map((item) => item.value));
+  const distribution = stats.parameter_distribution || {};
+  const analyticsById = new Map((stats.yeshivot || []).map((item) => [item.yeshiva_id, item]));
   const yeshivot = appData.yeshivot.map((yeshiva) => ({
     yeshiva,
     stats: analyticsById.get(yeshiva.id) || {}
@@ -1251,14 +1295,31 @@ function renderStatisticsPanel() {
     Number(stats.second_place || 0),
     Number(stats.third_place || 0)
   ]));
+
   return `
     <section class="statistics-panel" role="tabpanel">
       <div class="analytics-notice">הנתונים מצטברים בלבד. לא נשמרים פרטי משתמשים או מזהי דפדפן; כל השלמת שאלון נספרת בנפרד.</div>
       <div class="analytics-summary">
-        <article class="analytics-card"><span>שיתופים מדף הבית</span><strong>${Number(state.adminStats.home_shares || 0)}</strong></article>
-        <article class="analytics-card"><span>שיתופים מתוצאות</span><strong>${Number(state.adminStats.results_shares || 0)}</strong></article>
-        <article class="analytics-card"><span>השלמות שאלון</span><strong>${Number(state.adminStats.completions || 0)}</strong></article>
+        <article class="analytics-card"><span>שיתופים מדף הבית</span><strong>${shareMetrics[0].value}</strong></article>
+        <article class="analytics-card"><span>שיתופים מתוצאות</span><strong>${shareMetrics[1].value}</strong></article>
+        <article class="analytics-card"><span>השלמות שאלון</span><strong>${Number(stats.completions || 0)}</strong></article>
       </div>
+
+      <section class="analytics-share-section">
+        <h3>שיתופים לפי נקודת כניסה</h3>
+        <div class="share-chart">
+          ${shareMetrics.map(({ label, value }) => `
+            <div class="share-bar-row">
+              <span>${label}</span>
+              <div class="analytics-bar-track">
+                <span class="analytics-bar home-share" style="width:${Math.max(8, (value / maxShare) * 100)}%"></span>
+              </div>
+              <strong>${value}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
       <section class="analytics-yeshivot">
         <h3>התאמות לפי ישיבה</h3>
         ${yeshivot.length ? yeshivot.map(({ yeshiva, stats }) => {
@@ -1287,6 +1348,34 @@ function renderStatisticsPanel() {
           </article>`;
         }).join('') : '<p class="empty-state">עדיין אין ישיבות להצגה.</p>'}
       </section>
+
+      <section class="analytics-parameter-section">
+        <h3>התפלגות לפי פרמטר</h3>
+        <div class="parameter-distribution-grid">
+          ${appData.parameters.map((parameter) => {
+            const buckets = distribution[parameter.id] || {};
+            const values = Array.from({ length: 10 }, (_, index) => Number(buckets[index + 1] || 0));
+            const maxBucket = Math.max(1, ...values);
+            return `
+              <article class="parameter-distribution-card">
+                <h4>${escapeHtml(parameter.label)}</h4>
+                <p class="parameter-subtext">${escapeHtml(parameter.description || '')}</p>
+                <div class="parameter-distribution-chart" aria-label="התפלגות פרמטר ${escapeHtml(parameter.label)}">
+                  ${values.map((value, index) => `
+                    <div class="distribution-column">
+                      <span>${index + 1}</span>
+                      <div class="distribution-track">
+                        <span class="distribution-bar" style="height:${Math.max(8, (value / maxBucket) * 100)}%"></span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </article>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
       <div class="statistics-actions">
         <button class="text-button danger-button" type="button" id="reset-statistics">אפס את כל הסטטיסטיקה</button>
       </div>
