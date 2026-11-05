@@ -27,6 +27,7 @@ const state = {
   adminEmail: '',
   adminStats: null,
   adminStatsError: '',
+  selectedParameterId: '',
   adminParametersDraft: null,
   pendingRequests: [],
   cloudMessage: ''
@@ -151,11 +152,15 @@ function initializeParameters(parameters = appData.parameters) {
 initializeParameters();
 bundledContent.parameters = JSON.parse(JSON.stringify(appData.parameters));
 
-async function recordAnalyticsEvent(eventType, results = []) {
+async function recordAnalyticsEvent(eventType, results = [], profile = null) {
   if (!supabaseClient) return;
-  const { error } = await supabaseClient.rpc('record_public_analytics_event', {
+  const payload = {
     p_event_type: eventType,
     p_results: results
+  };
+  if (profile) payload.p_profile = profile;
+  const { error } = await supabaseClient.rpc('record_public_analytics_event', {
+    ...payload
   });
   if (error) {
     console.error(`לא ניתן לשמור אירוע אנליטיקה (${eventType}).`, error);
@@ -163,12 +168,13 @@ async function recordAnalyticsEvent(eventType, results = []) {
 }
 
 async function recordCompletionAnalytics() {
-  const results = computeScores(appData.yeshivot.length).map((yeshiva, index) => ({
+  const rankedResults = computeScores(appData.yeshivot.length);
+  const results = rankedResults.map((yeshiva, index) => ({
     yeshiva_id: yeshiva.id,
     score: yeshiva.score,
     rank: index + 1
   }));
-  await recordAnalyticsEvent('completion', results);
+  await recordAnalyticsEvent('completion', results, rankedResults[0]?.userProfile || buildUserProfile());
 }
 
 function escapeHtml(value) {
@@ -295,6 +301,7 @@ function renderWelcome() {
 
 function buildQuestionMarkup(question, index) {
   const allQuestions = appData.questions;
+  const options = [...question.options].sort((left, right) => Number(left.id !== 'no') - Number(right.id !== 'no'));
   const selectedOptionId = state.answers[question.id];
   const progressPercent = (index / allQuestions.length) * 100;
 
@@ -313,7 +320,7 @@ function buildQuestionMarkup(question, index) {
       <h2 class="question-heading">${escapeHtml(question.text)}</h2>
 
       <div class="option-grid" role="list">
-        ${question.options
+        ${options
           .map(
             (option) => `
               <button
@@ -454,7 +461,7 @@ function computeScores(limit = 3) {
 
 function renderResults() {
   const results = computeScores();
-  const resultsShareText = 'הנה ההתאמות המובילות שלי לישיבה. בדקו איזו ישיבה מתאימה לכם.';
+  const resultsShareText = 'אלו הישיבות שיצאו לי, בדוק את שלך';
 
   root.innerHTML = `
     <section class="results-panel">
@@ -1356,6 +1363,16 @@ function renderStatisticsPanel() {
     Number(stats.second_place || 0),
     Number(stats.third_place || 0)
   ]));
+  const selectedParameter = appData.parameters.find((parameter) => parameter.id === state.selectedParameterId)
+    || appData.parameters[0];
+  const parameterBuckets = selectedParameter ? distribution[selectedParameter.id] || {} : {};
+  const parameterValues = Array.from({ length: 10 }, (_, index) => Number(parameterBuckets[index + 1] || 0));
+  const parameterResponseCount = parameterValues.reduce((sum, count) => sum + count, 0);
+  const parameterAverage = parameterResponseCount
+    ? parameterValues.reduce((sum, count, index) => sum + count * (index + 1), 0) / parameterResponseCount
+    : 0;
+  const mostCommonValue = parameterValues.indexOf(Math.max(...parameterValues)) + 1;
+  const maxParameterBucket = Math.max(1, ...parameterValues);
 
   return `
     <section class="statistics-panel" role="tabpanel">
@@ -1411,30 +1428,38 @@ function renderStatisticsPanel() {
       </section>
 
       <section class="analytics-parameter-section">
-        <h3>התפלגות לפי פרמטר</h3>
-        <div class="parameter-distribution-grid">
-          ${appData.parameters.map((parameter) => {
-            const buckets = distribution[parameter.id] || {};
-            const values = Array.from({ length: 10 }, (_, index) => Number(buckets[index + 1] || 0));
-            const maxBucket = Math.max(1, ...values);
-            return `
-              <article class="parameter-distribution-card">
-                <h4>${escapeHtml(parameter.label)}</h4>
-                <p class="parameter-subtext">${escapeHtml(parameter.description || '')}</p>
-                <div class="parameter-distribution-chart" aria-label="התפלגות פרמטר ${escapeHtml(parameter.label)}">
-                  ${values.map((value, index) => `
-                    <div class="distribution-column">
-                      <span>${index + 1}</span>
-                      <div class="distribution-track">
-                        <span class="distribution-bar" style="height:${Math.max(8, (value / maxBucket) * 100)}%"></span>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              </article>
-            `;
-          }).join('')}
+        <div class="parameter-distribution-heading">
+          <div>
+            <h3>התפלגות לפי פרמטר</h3>
+            <p class="muted-note">ערכי הפרופיל של המשיבים, בסולם 1–10.</p>
+          </div>
+          <label class="parameter-distribution-select">
+            <span>פרמטר</span>
+            <select id="parameter-distribution-select">
+              ${appData.parameters.map((parameter) => `
+                <option value="${escapeHtml(parameter.id)}" ${parameter.id === selectedParameter?.id ? 'selected' : ''}>${escapeHtml(parameter.label)}</option>
+              `).join('')}
+            </select>
+          </label>
         </div>
+        ${selectedParameter ? `<p class="parameter-distribution-description">${escapeHtml(selectedParameter.description || '')}</p>` : ''}
+        <div class="parameter-distribution-summary">
+          <div><span>שאלונים שנכללו</span><strong>${parameterResponseCount}</strong></div>
+          <div><span>ממוצע</span><strong>${parameterResponseCount ? `${parameterAverage.toFixed(1)} / 10` : '—'}</strong></div>
+          <div><span>הערך הנפוץ</span><strong>${parameterResponseCount ? `${mostCommonValue} / 10` : '—'}</strong></div>
+        </div>
+        ${parameterResponseCount
+          ? `<div class="parameter-distribution-list" role="img" aria-label="התפלגות ${escapeHtml(selectedParameter.label)} בין 1 ל-10">
+              ${parameterValues.map((count, index) => {
+                const percentage = (count / parameterResponseCount) * 100;
+                return `<div class="parameter-distribution-row">
+                  <span class="distribution-value">${index + 1}</span>
+                  <div class="distribution-track" aria-hidden="true"><span class="distribution-bar" style="width:${(count / maxParameterBucket) * 100}%"></span></div>
+                  <span class="distribution-count"><strong>${count}</strong><small>${percentage.toFixed(0)}%</small></span>
+                </div>`;
+              }).join('')}
+            </div>`
+          : '<p class="parameter-distribution-empty">ההתפלגות תופיע לאחר שמשתמשים ישלימו שאלונים.</p>'}
       </section>
 
       <div class="statistics-actions">
@@ -1607,6 +1632,10 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
     renderAdminLogin();
   });
   document.getElementById('reset-statistics')?.addEventListener('click', resetAdminStatistics);
+  document.getElementById('parameter-distribution-select')?.addEventListener('change', (event) => {
+    state.selectedParameterId = event.currentTarget.value;
+    renderAdminPanel('statistics');
+  });
   root.querySelectorAll('[data-admin-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       readCurrentAdminDraft();

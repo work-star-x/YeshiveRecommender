@@ -49,9 +49,17 @@ create table if not exists public.yeshiva_analytics (
   completion_count bigint not null default 0 check (completion_count >= 0)
 );
 
+create table if not exists public.parameter_distribution (
+  parameter_id text not null,
+  value smallint not null check (value between 1 and 10),
+  response_count bigint not null default 0 check (response_count >= 0),
+  primary key (parameter_id, value)
+);
+
 alter table public.analytics_counters enable row level security;
 alter table public.yeshiva_analytics enable row level security;
-revoke all on public.analytics_counters, public.yeshiva_analytics from public, anon, authenticated;
+alter table public.parameter_distribution enable row level security;
+revoke all on public.analytics_counters, public.yeshiva_analytics, public.parameter_distribution from public, anon, authenticated;
 
 create index if not exists submissions_pending_created_at_idx
   on public.submissions (created_at)
@@ -155,7 +163,12 @@ create trigger validate_submission_target_before_insert
   before insert on public.submissions
   for each row execute function public.validate_submission_target();
 
-create or replace function public.record_public_analytics_event(p_event_type text, p_results jsonb default '[]'::jsonb)
+drop function if exists public.record_public_analytics_event(text, jsonb);
+create or replace function public.record_public_analytics_event(
+  p_event_type text,
+  p_results jsonb default '[]'::jsonb,
+  p_profile jsonb default null
+)
 returns void
 language plpgsql
 security definer
@@ -163,9 +176,15 @@ set search_path = ''
 as $$
 declare
   result_item jsonb;
+  parameter_item jsonb;
   score_value numeric;
+  parameter_value numeric;
   result_rank integer;
   expected_yeshiva_count integer;
+  profile_parameter_id text;
+  profile_value_text text;
+  parameter_bucket smallint;
+  site_parameters jsonb;
 begin
   if p_event_type is null or p_event_type not in ('completion', 'share_home', 'share_results') then
     raise exception 'Unsupported analytics event.';
@@ -175,13 +194,34 @@ begin
     if jsonb_typeof(p_results) is distinct from 'array' or jsonb_array_length(p_results) > 100 then
       raise exception 'Completion results must be an array of up to one hundred placements.';
     end if;
-    select jsonb_array_length(yeshivot)
-    into expected_yeshiva_count
+    select jsonb_array_length(yeshivot), parameters
+    into expected_yeshiva_count, site_parameters
     from public.site_content
     where id = 'main';
 
     if expected_yeshiva_count is null or jsonb_array_length(p_results) <> expected_yeshiva_count then
       raise exception 'Completion results do not match the current yeshiva list.';
+    end if;
+    if p_profile is not null then
+      if jsonb_typeof(p_profile) is distinct from 'object' then
+        raise exception 'Completion profile does not match the current parameter list.';
+      end if;
+      if (select count(*) from jsonb_object_keys(p_profile)) <> jsonb_array_length(site_parameters) then
+        raise exception 'Completion profile does not match the current parameter list.';
+      end if;
+
+      for parameter_item in select value from jsonb_array_elements(site_parameters)
+      loop
+        profile_parameter_id := parameter_item->>'id';
+        profile_value_text := coalesce(p_profile->>profile_parameter_id, '');
+        if profile_value_text !~ '^[0-9]+([.][0-9]+)?$' then
+          raise exception 'Completion profile contains an invalid parameter value.';
+        end if;
+        parameter_value := profile_value_text::numeric;
+        if parameter_value < 1 or parameter_value > 10 then
+          raise exception 'Completion profile contains an invalid parameter value.';
+        end if;
+      end loop;
     end if;
     if exists (
       select 1
@@ -248,6 +288,24 @@ begin
           score_total = current_stats.score_total + excluded.score_total,
           completion_count = current_stats.completion_count + excluded.completion_count;
     end loop;
+
+    if p_profile is not null then
+      for parameter_item in select value from jsonb_array_elements(site_parameters)
+      loop
+        profile_parameter_id := parameter_item->>'id';
+        parameter_value := (p_profile->>profile_parameter_id)::numeric;
+        parameter_bucket := round(parameter_value)::smallint;
+
+        insert into public.parameter_distribution as current_distribution (
+          parameter_id,
+          value,
+          response_count
+        )
+        values (profile_parameter_id, parameter_bucket, 1)
+        on conflict (parameter_id, value) do update
+        set response_count = current_distribution.response_count + excluded.response_count;
+      end loop;
+    end if;
   else
     insert into public.analytics_counters as existing_counter (event_type, total)
     values (p_event_type, 1)
@@ -257,8 +315,8 @@ begin
 end;
 $$;
 
-revoke all on function public.record_public_analytics_event(text, jsonb) from public;
-grant execute on function public.record_public_analytics_event(text, jsonb) to anon, authenticated;
+revoke all on function public.record_public_analytics_event(text, jsonb, jsonb) from public;
+grant execute on function public.record_public_analytics_event(text, jsonb, jsonb) to anon, authenticated;
 
 create or replace function public.get_admin_analytics()
 returns jsonb
@@ -277,6 +335,14 @@ begin
       'completions', coalesce((select total from public.analytics_counters where event_type = 'completion'), 0),
       'home_shares', coalesce((select total from public.analytics_counters where event_type = 'share_home'), 0),
       'results_shares', coalesce((select total from public.analytics_counters where event_type = 'share_results'), 0),
+      'parameter_distribution', coalesce((
+        select jsonb_object_agg(parameter_id, buckets)
+        from (
+          select parameter_id, jsonb_object_agg(value::text, response_count) as buckets
+          from public.parameter_distribution
+          group by parameter_id
+        ) as parameter_buckets
+      ), '{}'::jsonb),
       'yeshivot', coalesce((
         select jsonb_agg(jsonb_build_object(
           'yeshiva_id', yeshiva_id,
@@ -308,6 +374,7 @@ begin
 
   delete from public.yeshiva_analytics
   where yeshiva_id is not null;
+  delete from public.parameter_distribution;
   delete from public.analytics_counters
   where event_type in ('completion', 'share_home', 'share_results');
 end;
@@ -347,6 +414,7 @@ begin
 
   delete from public.yeshiva_analytics
   where yeshiva_id is not null;
+  delete from public.parameter_distribution;
   delete from public.analytics_counters
   where event_type in ('completion', 'share_home', 'share_results');
 end;
