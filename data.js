@@ -139,6 +139,8 @@ window.APP_DATA = {
       id: 'merkaz_harav',
       name: 'ישיבת מרכז הרב',
       shortName: 'מרכז הרב',
+      area: 'ירושלים',
+      areaGroup: 'ירושלים',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 3,
@@ -154,6 +156,8 @@ window.APP_DATA = {
       id: 'har_etzion',
       name: 'ישיבת הר עציון',
       shortName: 'הר עציון',
+      area: 'אלון שבות, גוש עציון',
+      areaGroup: 'גוש עציון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 8,
@@ -169,6 +173,8 @@ window.APP_DATA = {
       id: 'kerem_beyavne',
       name: 'ישיבת כרם ביבנה',
       shortName: 'כרם ביבנה',
+      area: 'כרם ביבנה, מועצה אזורית חבל יבנה',
+      areaGroup: 'אזור יבנה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 6,
@@ -184,6 +190,8 @@ window.APP_DATA = {
       id: 'shaalvim',
       name: 'ישיבת שעלבים',
       shortName: 'שעלבים',
+      area: 'שעלבים, מועצה אזורית גזר',
+      areaGroup: 'השפלה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 6,
@@ -199,6 +207,8 @@ window.APP_DATA = {
       id: 'otniel',
       name: 'ישיבת עתניאל',
       shortName: 'עתניאל',
+      area: 'עתניאל, הר חברון',
+      areaGroup: 'הר חברון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 8,
@@ -214,6 +224,8 @@ window.APP_DATA = {
       id: 'har_bracha',
       name: 'ישיבת הר ברכה',
       shortName: 'הר ברכה',
+      area: 'הר ברכה, שומרון',
+      areaGroup: 'השומרון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 6,
@@ -229,6 +241,8 @@ window.APP_DATA = {
       id: 'siach_yitzchak',
       name: 'ישיבת שיח יצחק',
       shortName: 'שיח יצחק',
+      area: 'אפרת, גוש עציון',
+      areaGroup: 'גוש עציון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 3,
@@ -244,6 +258,8 @@ window.APP_DATA = {
       id: 'shavei_hevron',
       name: 'ישיבת שבי חברון',
       shortName: 'שבי חברון',
+      area: 'חברון',
+      areaGroup: 'חברון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 3,
@@ -259,6 +275,8 @@ window.APP_DATA = {
       id: 'hesder_tzfat',
       name: 'ישיבת ההסדר צפת',
       shortName: 'ההסדר צפת',
+      area: 'צפת, הגליל העליון',
+      areaGroup: 'הגליל העליון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 10,
@@ -274,6 +292,8 @@ window.APP_DATA = {
       id: 'tekoa',
       name: 'ישיבת תקוע',
       shortName: 'תקוע',
+      area: 'תקוע, גוש עציון',
+      areaGroup: 'גוש עציון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 3,
@@ -289,6 +309,8 @@ window.APP_DATA = {
       id: 'machanim',
       name: 'ישיבת מחנים',
       shortName: 'מחנים',
+      area: 'מגדל עוז, גוש עציון',
+      areaGroup: 'גוש עציון',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
       profileTags: {
         military: 5,

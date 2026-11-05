@@ -20,6 +20,7 @@ const supabaseClient = hasSupabaseConfig
 const state = {
   currentIndex: 0,
   answers: {},
+  preferredAreaGroup: 'any',
   completed: false,
   started: false,
   adminAuthenticated: false,
@@ -191,6 +192,11 @@ function formatTagLabel(tag) {
   return TAG_LABELS[tag] || tag.replace(/_/g, ' ');
 }
 
+function getAreaGroups() {
+  return [...new Set(appData.yeshivot.map((yeshiva) => yeshiva.areaGroup).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'he'));
+}
+
 function getShareUrl() {
   return window.location.href.split('#')[0];
 }
@@ -226,6 +232,7 @@ async function shareResultsImage(title, text) {
   const imageBlob = await window.htmlToImage.toBlob(exportNode, {
     pixelRatio: 2,
     cacheBust: true,
+    skipFonts: true,
     backgroundColor: pageCard ? getComputedStyle(pageCard).backgroundColor : '#ffffff'
   });
   if (!imageBlob) throw new Error('Could not render the results image.');
@@ -273,6 +280,13 @@ function renderWelcome() {
       <span class="welcome-kicker">2 דקות ו...</span>
       <h2>נמצא את הישיבה<br />שתתאים לך</h2>
       <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
+      <label class="area-preference-control" for="area-preference">
+        <span>אזור לימודים מועדף</span>
+        <select id="area-preference">
+          <option value="any" ${state.preferredAreaGroup === 'any' ? 'selected' : ''}>פתוח לכל אזור</option>
+          ${getAreaGroups().map((areaGroup) => `<option value="${escapeHtml(areaGroup)}" ${state.preferredAreaGroup === areaGroup ? 'selected' : ''}>${escapeHtml(areaGroup)}</option>`).join('')}
+        </select>
+      </label>
       <div class="welcome-actions">
         <button class="nav-button primary start-button" type="button" id="start-button">התחל</button>
         <button class="nav-button secondary share-button" type="button" id="share-app-button" aria-label="שתף את הכלי" title="שתף">
@@ -287,8 +301,12 @@ function renderWelcome() {
   `;
 
   document.getElementById('start-button').addEventListener('click', () => {
+    state.preferredAreaGroup = document.getElementById('area-preference').value;
     state.started = true;
     render();
+  });
+  document.getElementById('area-preference').addEventListener('change', (event) => {
+    state.preferredAreaGroup = event.currentTarget.value;
   });
   document.getElementById('share-app-button').addEventListener('click', async () => {
     const message = await shareContent(appData.app.title, 'כלי קצר למציאת ישיבה שמתאימה לסגנון הלימוד ולערכים שלך.');
@@ -425,6 +443,7 @@ const MAHANAYIM_THRESHOLDS = {
 };
 
 const MAHANAYIM_BONUS = 5;
+const AREA_MATCH_BONUS = 12;
 const DISPLAY_SCORE_FLOOR = 60;
 
 function computeScores(limit = 3) {
@@ -445,13 +464,18 @@ function computeScores(limit = 3) {
         && userProfile.conservatism_authority <= MAHANAYIM_THRESHOLDS.conservatism_authority
         && userProfile.classic_study <= MAHANAYIM_THRESHOLDS.classic_study;
       const conditionalBonus = receivesMahanayimBonus ? MAHANAYIM_BONUS : 0;
-      const adjustedScore = clamp(baseScore + conditionalBonus, 0, 100);
+      const areaMatchBonus = state.preferredAreaGroup !== 'any'
+        && yeshiva.areaGroup === state.preferredAreaGroup
+        ? AREA_MATCH_BONUS
+        : 0;
+      const adjustedScore = clamp(baseScore + conditionalBonus + areaMatchBonus, 0, 100);
       const displayScore = DISPLAY_SCORE_FLOOR + (adjustedScore / 100) * (100 - DISPLAY_SCORE_FLOOR);
 
       return {
         ...yeshiva,
         score: Number(Math.min(displayScore, 100).toFixed(1)),
         conditionalBonus,
+        areaMatchBonus,
         userProfile
       };
     })
@@ -466,36 +490,17 @@ function renderResults() {
   root.innerHTML = `
     <section class="results-panel">
       <div class="results-export" id="results-export">
-        <div class="results-header">
-          <h2>ההתאמות הטובות ביותר</h2>
-          <p>על פי סגנון הלימוד, הערכים והיעדים שלך.</p>
-          <p class="score-scale-note">אחוזי ההתאמה מוצגים בסולם חזותי מותאם (60%–100%).</p>
-        </div>
-
         <div class="top-three">
           ${results
             .map(
               (yeshiva, index) => `
               <article class="result-card rank-${index + 1}">
-                <div class="result-rank">#${index + 1}</div>
-                <h3>${escapeHtml(yeshiva.name)}</h3>
-                <p class="result-description">${escapeHtml(yeshiva.description || '')}</p>
-
-                <div class="result-score">
-                  <span class="score-label">התאמה</span>
-                  <span class="score-value">${Math.round(yeshiva.score)}%</span>
+                <span class="result-rank">${index + 1}</span>
+                <div class="result-main">
+                  <h3>${escapeHtml(yeshiva.name)}</h3>
+                  <span class="result-area">${escapeHtml(yeshiva.area || 'מיקום לא צוין')}</span>
                 </div>
-                ${yeshiva.conditionalBonus ? '<p class="score-note">כולל תוספת התאמה מותנית</p>' : ''}
-
-                <div class="result-meta">
-                  ${
-                    Object.entries(yeshiva.profileTags)
-                      .sort((left, right) => right[1] - left[1])
-                      .slice(0, 3)
-                      .map(([tag]) => `<span class="meta-pill">${escapeHtml(formatTagLabel(tag))}</span>`)
-                      .join('')
-                  }
-                </div>
+                <strong class="result-percentage">${Math.round(yeshiva.score)}%</strong>
               </article>
             `
             )
@@ -972,6 +977,8 @@ function createYeshivaFromRequest(request, profileTags) {
     id,
     name: request.yeshivaName,
     shortName: request.yeshivaName,
+    area: 'מיקום לא צוין',
+    areaGroup: '',
     description: request.details || 'ישיבה שהוצעה על ידי משתמשים.',
     profileTags: Object.fromEntries(appData.parameters.map((parameter) => [
       parameter.id,
@@ -1179,6 +1186,13 @@ function renderYeshivaEditor(yeshiva, index) {
         <label>מזהה<input data-yeshiva-field="id" value="${escapeHtml(yeshiva.id)}" required /></label>
         <label>שם הישיבה<input data-yeshiva-field="name" value="${escapeHtml(yeshiva.name)}" required /></label>
         <label>שם קצר<input data-yeshiva-field="shortName" value="${escapeHtml(yeshiva.shortName || '')}" /></label>
+        <label>אזור גאוגרפי<input data-yeshiva-field="area" value="${escapeHtml(yeshiva.area || '')}" placeholder="יישוב או אזור" required /></label>
+        <label>אזור להתאמה
+          <select data-yeshiva-field="areaGroup">
+            <option value="">לא משויך לאזור</option>
+            ${getAreaGroups().map((areaGroup) => `<option value="${escapeHtml(areaGroup)}" ${yeshiva.areaGroup === areaGroup ? 'selected' : ''}>${escapeHtml(areaGroup)}</option>`).join('')}
+          </select>
+        </label>
         <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="4">${escapeHtml(yeshiva.description || '')}</textarea></label>
       </div>
       <section class="profile-weights">
@@ -1300,6 +1314,8 @@ function readYeshivotFromEditor() {
       id: readField('id'),
       name: readField('name'),
       shortName: readField('shortName'),
+      area: readField('area'),
+      areaGroup: readField('areaGroup'),
       description: editor.querySelector('[data-yeshiva-field="description"]').value.trim(),
       profileTags
     };
@@ -1522,7 +1538,7 @@ function validateYeshivot(yeshivot) {
   if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
     throw new Error('מזהי הישיבות חייבים להיות מלאים וייחודיים.');
   }
-  if (yeshivot.some((yeshiva) => !yeshiva.name || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 1 || weight > 10))) {
+  if (yeshivot.some((yeshiva) => !yeshiva.name || !yeshiva.area || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 1 || weight > 10))) {
     throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים בין 1 ל-10.');
   }
 }
@@ -1668,6 +1684,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
         yeshivotDraft.push({
           id: `yeshiva-${Date.now()}`,
           name: '', shortName: '', description: '',
+          area: 'מיקום לא צוין', areaGroup: '',
           profileTags: Object.fromEntries(appData.parameters.map((parameter) => [parameter.id, 5]))
         });
       } else if (button.dataset.action === 'remove-yeshiva') {
