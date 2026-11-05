@@ -364,12 +364,12 @@ function buildUserProfile() {
 }
 
 const MAHANAYIM_THRESHOLDS = {
-  cultural_openness: 6,
-  conservatism_authority: 4,
+  cultural_openness: 7,
+  conservatism_authority: 3,
   classic_study: 4
 };
 
-const MAHANAYIM_BONUS = 8;
+const MAHANAYIM_BONUS = 5;
 const DISPLAY_SCORE_FLOOR = 60;
 
 function computeScores(limit = 3) {
