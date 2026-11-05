@@ -1,4 +1,9 @@
+function stripShortYeshivaDescriptions(yeshivot) {
+  return yeshivot.map(({ tagline, matchSummary, ...yeshiva }) => yeshiva);
+}
+
 const appData = window.APP_DATA;
+appData.yeshivot = stripShortYeshivaDescriptions(appData.yeshivot);
 const bundledContent = JSON.parse(JSON.stringify({ questions: appData.questions, yeshivot: appData.yeshivot }));
 const supabaseConfig = window.SUPABASE_CONFIG || {};
 const hasSupabaseConfig = Boolean(
@@ -44,7 +49,7 @@ async function loadCloudContent() {
 
   if (data?.questions && data?.yeshivot) {
     appData.questions = data.questions;
-    appData.yeshivot = data.yeshivot;
+    appData.yeshivot = stripShortYeshivaDescriptions(data.yeshivot);
     if (Array.isArray(data.parameters)) initializeParameters(data.parameters);
   }
 }
@@ -205,6 +210,47 @@ async function shareContent(title, text) {
   }
 }
 
+async function shareResultsImage(title, text) {
+  const exportNode = document.getElementById('results-export');
+  if (!exportNode || !window.htmlToImage?.toBlob) {
+    throw new Error('Image export is unavailable.');
+  }
+
+  const pageCard = document.querySelector('.card');
+  const imageBlob = await window.htmlToImage.toBlob(exportNode, {
+    pixelRatio: 2,
+    cacheBust: true,
+    backgroundColor: pageCard ? getComputedStyle(pageCard).backgroundColor : '#ffffff'
+  });
+  if (!imageBlob) throw new Error('Could not render the results image.');
+
+  const imageFile = new File([imageBlob], 'yeshiva-matches.png', { type: 'image/png' });
+  const url = getShareUrl();
+  if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [imageFile] })) {
+    await navigator.share({ files: [imageFile], title, text, url });
+    return 'התמונה והתוצאות שותפו.';
+  }
+
+  const imageUrl = URL.createObjectURL(imageBlob);
+  const downloadLink = document.createElement('a');
+  downloadLink.href = imageUrl;
+  downloadLink.download = 'yeshiva-matches.png';
+  document.body.append(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  window.setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+
+  if (typeof navigator.share === 'function') {
+    await navigator.share({ title, text, url });
+    return 'התמונה הורדה וקישור השיתוף נפתח.';
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    return 'התמונה הורדה והקישור הועתק.';
+  }
+  return 'התמונה הורדה.';
+}
+
 function showNotice(message) {
   if (!message) return;
   const notice = document.createElement('div');
@@ -321,12 +367,14 @@ function getQuestionAnswerWeights(question, optionId) {
   if (!question || !optionId) return {};
   const option = question.options.find((item) => item.id === optionId);
   if (!option) return {};
-  if (option.weights && Object.keys(option.weights).length) {
-    return { ...option.weights };
-  }
-  const fallback = {};
-  (option.tags || []).forEach((tag) => { fallback[tag] = 1; });
-  return fallback;
+  const bundledQuestion = bundledContent.questions.find((item) => item.id === question.id);
+  const bundledOption = bundledQuestion?.options.find((item) => item.id === option.id);
+  const sourceWeights = option.weights && Object.keys(option.weights).length
+    ? option.weights
+    : bundledOption?.weights || {};
+  const direction = option.id === 'no' || option.label?.trim() === 'לא' ? -1 : 1;
+  const tags = Array.isArray(option.tags) ? option.tags : Object.keys(sourceWeights);
+  return Object.fromEntries(tags.map((tag) => [tag, Number(sourceWeights[tag] ?? direction)]));
 }
 
 function buildUserProfile() {
@@ -406,29 +454,25 @@ function computeScores(limit = 3) {
 
 function renderResults() {
   const results = computeScores();
-  const resultsShareText = [
-    ...results.map((yeshiva, index) => `${index + 1}. ${yeshiva.name}, ${Math.round(yeshiva.score)}%`),
-    '',
-    'בדוק מה תהיה הישיבה שלך!'
-  ].join('\n');
+  const resultsShareText = 'הנה ההתאמות המובילות שלי לישיבה. בדקו איזו ישיבה מתאימה לכם.';
 
   root.innerHTML = `
     <section class="results-panel">
-      <div class="results-header">
-        <h2>ההתאמות הטובות ביותר</h2>
-        <p>על פי סגנון הלימוד, הערכים והיעדים שלך.</p>
-        <p class="score-scale-note">אחוזי ההתאמה מוצגים בסולם חזותי מותאם (60%–100%).</p>
-      </div>
+      <div class="results-export" id="results-export">
+        <div class="results-header">
+          <h2>ההתאמות הטובות ביותר</h2>
+          <p>על פי סגנון הלימוד, הערכים והיעדים שלך.</p>
+          <p class="score-scale-note">אחוזי ההתאמה מוצגים בסולם חזותי מותאם (60%–100%).</p>
+        </div>
 
-      <div class="top-three">
-        ${results
-          .map(
-            (yeshiva, index) => `
+        <div class="top-three">
+          ${results
+            .map(
+              (yeshiva, index) => `
               <article class="result-card rank-${index + 1}">
                 <div class="result-rank">#${index + 1}</div>
                 <h3>${escapeHtml(yeshiva.name)}</h3>
-                <p class="result-tagline">${escapeHtml(yeshiva.tagline)}</p>
-                <p class="result-summary">${escapeHtml(yeshiva.matchSummary)}</p>
+                <p class="result-description">${escapeHtml(yeshiva.description || '')}</p>
 
                 <div class="result-score">
                   <span class="score-label">התאמה</span>
@@ -447,8 +491,9 @@ function renderResults() {
                 </div>
               </article>
             `
-          )
-          .join('')}
+            )
+            .join('')}
+        </div>
       </div>
 
       <div class="results-actions">
@@ -464,9 +509,16 @@ function renderResults() {
   `;
 
   document.getElementById('share-results-button').addEventListener('click', async () => {
-    const message = await shareContent('ההתאמות שלי לישיבה', resultsShareText);
+    let message;
+    try {
+      message = await shareResultsImage('ההתאמות שלי לישיבה', resultsShareText);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      console.error('לא ניתן ליצור או לשתף תמונת תוצאות.', error);
+      message = 'לא ניתן ליצור את תמונת התוצאות כרגע.';
+    }
     showNotice(message);
-    if (message === 'השיתוף נפתח.' || message === 'הקישור הועתק ללוח.') {
+    if (message.includes('שותפו') || message.includes('השיתוף נפתח') || message.includes('הקישור הועתק')) {
       await recordAnalyticsEvent('share_results');
     }
   });
@@ -913,9 +965,7 @@ function createYeshivaFromRequest(request, profileTags) {
     id,
     name: request.yeshivaName,
     shortName: request.yeshivaName,
-    tagline: 'פרופיל שהוצע על ידי משתמשים',
     description: request.details || 'ישיבה שהוצעה על ידי משתמשים.',
-    matchSummary: 'הפרופיל נוצר על בסיס הצעת משתמש ויש לבדוק ולאמת את פרטיו.',
     profileTags: Object.fromEntries(appData.parameters.map((parameter) => [
       parameter.id,
       clamp(Number(profileTags[parameter.id] || 5), 1, 10)
@@ -1122,9 +1172,7 @@ function renderYeshivaEditor(yeshiva, index) {
         <label>מזהה<input data-yeshiva-field="id" value="${escapeHtml(yeshiva.id)}" required /></label>
         <label>שם הישיבה<input data-yeshiva-field="name" value="${escapeHtml(yeshiva.name)}" required /></label>
         <label>שם קצר<input data-yeshiva-field="shortName" value="${escapeHtml(yeshiva.shortName || '')}" /></label>
-        <label>כותרת קצרה<input data-yeshiva-field="tagline" value="${escapeHtml(yeshiva.tagline || '')}" /></label>
-        <label>תיאור התאמה<input data-yeshiva-field="matchSummary" value="${escapeHtml(yeshiva.matchSummary || '')}" /></label>
-        <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="2">${escapeHtml(yeshiva.description || '')}</textarea></label>
+        <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="4">${escapeHtml(yeshiva.description || '')}</textarea></label>
       </div>
       <section class="profile-weights">
         <div class="section-heading">
@@ -1203,15 +1251,33 @@ function validateYeshivot(yeshivot) {
 }
 
 function readQuestionsFromEditor() {
-  return [...root.querySelectorAll('[data-question-card]')].map((card) => ({
-    id: card.querySelector('[data-question-field="id"]').value.trim(),
-    text: card.querySelector('[data-question-field="text"]').value.trim(),
-    options: [...card.querySelectorAll('[data-option-card]')].map((optionCard) => ({
-      id: optionCard.querySelector('[data-option-field="id"]').value.trim(),
-      label: optionCard.querySelector('[data-option-field="label"]').value.trim(),
-      tags: [...optionCard.querySelectorAll('[data-option-field="tags"]:checked')].map((input) => input.value)
-    }))
-  }));
+  return [...root.querySelectorAll('[data-question-card]')].map((card) => {
+    const id = card.querySelector('[data-question-field="id"]').value.trim();
+    const existingQuestion = appData.questions.find((question) => question.id === id);
+    const bundledQuestion = bundledContent.questions.find((question) => question.id === id);
+    return {
+      id,
+      text: card.querySelector('[data-question-field="text"]').value.trim(),
+      options: [...card.querySelectorAll('[data-option-card]')].map((optionCard) => {
+        const optionId = optionCard.querySelector('[data-option-field="id"]').value.trim();
+        const tags = [...optionCard.querySelectorAll('[data-option-field="tags"]:checked')].map((input) => input.value);
+        const existingOption = existingQuestion?.options.find((option) => option.id === optionId);
+        const bundledOption = bundledQuestion?.options.find((option) => option.id === optionId);
+        const sourceWeights = Object.keys(existingOption?.weights || {}).length
+          ? existingOption.weights
+          : bundledOption?.weights || {};
+        const label = optionCard.querySelector('[data-option-field="label"]').value.trim();
+        const fallbackWeight = optionId === 'no' || label === 'לא' ? -1 : 1;
+        const weights = Object.fromEntries(tags.map((tag) => [tag, Number(sourceWeights[tag] ?? fallbackWeight)]));
+        return {
+          id: optionId,
+          label,
+          tags,
+          weights
+        };
+      })
+    };
+  });
 }
 
 function readYeshivotFromEditor() {
@@ -1227,9 +1293,7 @@ function readYeshivotFromEditor() {
       id: readField('id'),
       name: readField('name'),
       shortName: readField('shortName'),
-      tagline: readField('tagline'),
       description: editor.querySelector('[data-yeshiva-field="description"]').value.trim(),
-      matchSummary: readField('matchSummary'),
       profileTags
     };
   });
@@ -1574,7 +1638,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
       if (button.dataset.action === 'add-yeshiva') {
         yeshivotDraft.push({
           id: `yeshiva-${Date.now()}`,
-          name: '', shortName: '', tagline: '', description: '', matchSummary: '',
+          name: '', shortName: '', description: '',
           profileTags: Object.fromEntries(appData.parameters.map((parameter) => [parameter.id, 5]))
         });
       } else if (button.dataset.action === 'remove-yeshiva') {
@@ -1886,7 +1950,7 @@ async function initializeApp() {
       }, (payload) => {
         if (!payload.new?.questions || !payload.new?.yeshivot) return;
         appData.questions = payload.new.questions;
-        appData.yeshivot = payload.new.yeshivot;
+        appData.yeshivot = stripShortYeshivaDescriptions(payload.new.yeshivot);
         if (Array.isArray(payload.new.parameters)) initializeParameters(payload.new.parameters);
         if (window.location.hash !== '#admin-secret') render();
       })

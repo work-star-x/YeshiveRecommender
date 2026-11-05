@@ -150,7 +150,9 @@ h1 {
 
 .option-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
+  direction: rtl;
 }
 
 .option-button {
@@ -304,16 +306,11 @@ h1 {
   font-size: 1.35rem;
 }
 
-.result-tagline {
-  margin: 0.35rem 0 0.75rem;
-  font-weight: 600;
-  color: var(--brand-dark);
-}
-
-.result-summary {
-  margin: 0;
+.result-description {
+  margin: 0.55rem 0 0;
   color: var(--muted);
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .score-scale-note,

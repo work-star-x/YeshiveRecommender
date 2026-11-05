@@ -139,9 +139,7 @@ window.APP_DATA = {
       id: 'merkaz_harav',
       name: 'ישיבת מרכז הרב',
       shortName: 'מרכז הרב',
-      tagline: 'לימוד קלאסי ושמרנות גבוהה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף שמרנות ולימוד קלאסי.',
       profileTags: {
         military: 3,
         social_engagement: 3,
@@ -156,9 +154,7 @@ window.APP_DATA = {
       id: 'har_etzion',
       name: 'ישיבת הר עציון',
       shortName: 'הר עציון',
-      tagline: 'מעורבות חברתית, פתיחות ולימוד מעמיק',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמחפש שילוב של מעורבות, פתיחות ולימוד קלאסי.',
       profileTags: {
         military: 8,
         social_engagement: 8,
@@ -173,9 +169,7 @@ window.APP_DATA = {
       id: 'kerem_beyavne',
       name: 'ישיבת כרם ביבנה',
       shortName: 'כרם ביבנה',
-      tagline: 'לימוד קלאסי ומסגרת שמרנית',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף לימוד קלאסי ושמרנות לצד מעורבות מתונה.',
       profileTags: {
         military: 6,
         social_engagement: 6,
@@ -190,9 +184,7 @@ window.APP_DATA = {
       id: 'shaalvim',
       name: 'ישיבת שעלבים',
       shortName: 'שעלבים',
-      tagline: 'פרופיל מאוזן עם דגש על לימוד קלאסי',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמחפש איזון בין הפרמטרים וסגנון לימוד קלאסי.',
       profileTags: {
         military: 6,
         social_engagement: 6,
@@ -207,9 +199,7 @@ window.APP_DATA = {
       id: 'otniel',
       name: 'ישיבת עתניאל',
       shortName: 'עתניאל',
-      tagline: 'מעורבות גבוהה, פתיחות ויחס אישי',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף מעורבות ופתיחות גבוהות לצד יחס אישי.',
       profileTags: {
         military: 8,
         social_engagement: 10,
@@ -224,9 +214,7 @@ window.APP_DATA = {
       id: 'har_bracha',
       name: 'ישיבת הר ברכה',
       shortName: 'הר ברכה',
-      tagline: 'מעורבות גבוהה ושמרנות גבוהה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף מעורבות לצד שמרנות ולימוד קלאסי.',
       profileTags: {
         military: 6,
         social_engagement: 8,
@@ -241,9 +229,7 @@ window.APP_DATA = {
       id: 'siach_yitzchak',
       name: 'ישיבת שיח יצחק',
       shortName: 'שיח יצחק',
-      tagline: 'פתיחות ויחס אישי גבוהים',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף פתיחות, יחס אישי ומעורבות גבוהים.',
       profileTags: {
         military: 3,
         social_engagement: 8,
@@ -258,9 +244,7 @@ window.APP_DATA = {
       id: 'shavei_hevron',
       name: 'ישיבת שבי חברון',
       shortName: 'שבי חברון',
-      tagline: 'לימוד קלאסי ושמרנות גבוהה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף שמרנות ולימוד קלאסי.',
       profileTags: {
         military: 3,
         social_engagement: 3,
@@ -275,9 +259,7 @@ window.APP_DATA = {
       id: 'hesder_tzfat',
       name: 'ישיבת ההסדר צפת',
       shortName: 'ההסדר צפת',
-      tagline: 'שירות ומעורבות חברתית גבוהים',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף שירות ומעורבות חברתית גבוהים.',
       profileTags: {
         military: 10,
         social_engagement: 8,
@@ -292,9 +274,7 @@ window.APP_DATA = {
       id: 'tekoa',
       name: 'ישיבת תקוע',
       shortName: 'תקוע',
-      tagline: 'פתיחות תרבותית גבוהה ושמרנות נמוכה',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה למי שמעדיף פתיחות תרבותית גבוהה לצד לימוד קלאסי.',
       profileTags: {
         military: 3,
         social_engagement: 6,
@@ -309,9 +289,7 @@ window.APP_DATA = {
       id: 'machanim',
       name: 'ישיבת מחנים',
       shortName: 'מחנים',
-      tagline: 'פתיחות תרבותית ויחס אישי גבוהים',
       description: 'פרופיל התאמה המבוסס על ערכי הפרמטרים שהוגדרו.',
-      matchSummary: 'מתאימה במיוחד למי שפרופילו משלב פתיחות גבוהה, שמרנות נמוכה ולימוד פחות קלאסי.',
       profileTags: {
         military: 5,
         social_engagement: 7,
