@@ -1188,10 +1188,8 @@ function renderYeshivaEditor(yeshiva, index) {
         <label>שם קצר<input data-yeshiva-field="shortName" value="${escapeHtml(yeshiva.shortName || '')}" /></label>
         <label>אזור גאוגרפי<input data-yeshiva-field="area" value="${escapeHtml(yeshiva.area || '')}" placeholder="יישוב או אזור" required /></label>
         <label>אזור להתאמה
-          <select data-yeshiva-field="areaGroup">
-            <option value="">לא משויך לאזור</option>
-            ${getAreaGroups().map((areaGroup) => `<option value="${escapeHtml(areaGroup)}" ${yeshiva.areaGroup === areaGroup ? 'selected' : ''}>${escapeHtml(areaGroup)}</option>`).join('')}
-          </select>
+          <input data-yeshiva-field="areaGroup" list="area-groups-${escapeHtml(yeshiva.id)}" value="${escapeHtml(yeshiva.areaGroup || '')}" placeholder="בחר או הקלד אזור" />
+          <datalist id="area-groups-${escapeHtml(yeshiva.id)}">${getAreaGroups().map((areaGroup) => `<option value="${escapeHtml(areaGroup)}"></option>`).join('')}</datalist>
         </label>
         <label class="wide-field">תיאור הישיבה<textarea data-yeshiva-field="description" rows="4">${escapeHtml(yeshiva.description || '')}</textarea></label>
       </div>
