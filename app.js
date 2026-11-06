@@ -239,11 +239,18 @@ async function shareResultsImage(title, text) {
 
   const imageFile = new File([imageBlob], 'yeshiva-matches.png', { type: 'image/png' });
   const url = getShareUrl();
+
+  // Check if the browser supports sharing files
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [imageFile] })) {
-    await navigator.share({ files: [imageFile], title, text, url });
+    await navigator.share({
+      files: [imageFile],
+      title: title,
+      text: `${text}\n${url}`
+    });
     return 'התמונה והתוצאות שותפו.';
   }
 
+  // Fallback if file sharing isn't supported on this device/browser
   const imageUrl = URL.createObjectURL(imageBlob);
   const downloadLink = document.createElement('a');
   downloadLink.href = imageUrl;
@@ -253,15 +260,8 @@ async function shareResultsImage(title, text) {
   downloadLink.remove();
   window.setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
 
-  if (typeof navigator.share === 'function') {
-    await navigator.share({ title, text, url });
-    return 'התמונה הורדה וקישור השיתוף נפתח.';
-  }
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(`${text}\n${url}`);
-    return 'התמונה הורדה והקישור הועתק.';
-  }
-  return 'התמונה הורדה.';
+  await navigator.share({ title, text, url });
+  return 'התמונה הורדה וקישור השיתוף נפתח.';
 }
 
 function showNotice(message) {
