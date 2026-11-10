@@ -20,7 +20,7 @@ const supabaseClient = hasSupabaseConfig
 const state = {
   currentIndex: 0,
   answers: {},
-  preferredAreaGroup: 'any',
+  preferredAreaGroups: [],
   completed: false,
   started: false,
   adminAuthenticated: false,
@@ -228,29 +228,22 @@ async function shareResultsImage(title, text) {
     throw new Error('Image export is unavailable.');
   }
 
-  const pageCard = document.querySelector('.card');
   const imageBlob = await window.htmlToImage.toBlob(exportNode, {
     pixelRatio: 2,
     cacheBust: true,
     skipFonts: true,
-    backgroundColor: pageCard ? getComputedStyle(pageCard).backgroundColor : '#ffffff'
+    backgroundColor: '#102047',
+    style: { padding: '20px' }
   });
   if (!imageBlob) throw new Error('Could not render the results image.');
 
   const imageFile = new File([imageBlob], 'yeshiva-matches.png', { type: 'image/png' });
   const url = getShareUrl();
-
-  // Check if the browser supports sharing files
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [imageFile] })) {
-    await navigator.share({
-      files: [imageFile],
-      title: title,
-      text: `${text}\n${url}`
-    });
+    await navigator.share({ files: [imageFile], title, text, url });
     return 'התמונה והתוצאות שותפו.';
   }
 
-  // Fallback if file sharing isn't supported on this device/browser
   const imageUrl = URL.createObjectURL(imageBlob);
   const downloadLink = document.createElement('a');
   downloadLink.href = imageUrl;
@@ -260,8 +253,15 @@ async function shareResultsImage(title, text) {
   downloadLink.remove();
   window.setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
 
-  await navigator.share({ title, text, url });
-  return 'התמונה הורדה וקישור השיתוף נפתח.';
+  if (typeof navigator.share === 'function') {
+    await navigator.share({ title, text, url });
+    return 'התמונה הורדה וקישור השיתוף נפתח.';
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    return 'התמונה הורדה והקישור הועתק.';
+  }
+  return 'התמונה הורדה.';
 }
 
 function showNotice(message) {
@@ -280,13 +280,13 @@ function renderWelcome() {
       <span class="welcome-kicker">2 דקות ו...</span>
       <h2>נמצא את הישיבה<br />שתתאים לך</h2>
       <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
-      <label class="area-preference-control" for="area-preference">
-        <span>אזור לימודים מועדף</span>
-        <select id="area-preference">
-          <option value="any" ${state.preferredAreaGroup === 'any' ? 'selected' : ''}>פתוח לכל אזור</option>
-          ${getAreaGroups().map((areaGroup) => `<option value="${escapeHtml(areaGroup)}" ${state.preferredAreaGroup === areaGroup ? 'selected' : ''}>${escapeHtml(areaGroup)}</option>`).join('')}
-        </select>
-      </label>
+      <fieldset class="area-preference-control">
+        <legend>אזורי לימודים מועדפים</legend>
+        <div class="area-options">
+          <label class="area-option"><input type="checkbox" id="area-all" ${state.preferredAreaGroups.length === 0 ? 'checked' : ''} /><span>כל האזורים</span></label>
+          ${getAreaGroups().map((areaGroup) => `<label class="area-option"><input type="checkbox" class="area-checkbox" value="${escapeHtml(areaGroup)}" ${state.preferredAreaGroups.includes(areaGroup) ? 'checked' : ''} /><span>${escapeHtml(areaGroup)}</span></label>`).join('')}
+        </div>
+      </fieldset>
       <div class="welcome-actions">
         <button class="nav-button primary start-button" type="button" id="start-button">התחל</button>
         <button class="nav-button secondary share-button" type="button" id="share-app-button" aria-label="שתף את הכלי" title="שתף">
@@ -301,13 +301,20 @@ function renderWelcome() {
   `;
 
   document.getElementById('start-button').addEventListener('click', () => {
-    state.preferredAreaGroup = document.getElementById('area-preference').value;
     state.started = true;
     render();
   });
-  document.getElementById('area-preference').addEventListener('change', (event) => {
-    state.preferredAreaGroup = event.currentTarget.value;
+  const areaAll = document.getElementById('area-all');
+  const areaBoxes = [...document.querySelectorAll('.area-checkbox')];
+  const syncAreas = () => {
+    state.preferredAreaGroups = areaBoxes.filter((box) => box.checked).map((box) => box.value);
+    areaAll.checked = state.preferredAreaGroups.length === 0;
+  };
+  areaAll.addEventListener('change', () => {
+    areaBoxes.forEach((box) => { box.checked = false; });
+    syncAreas();
   });
+  areaBoxes.forEach((box) => box.addEventListener('change', syncAreas));
   document.getElementById('share-app-button').addEventListener('click', async () => {
     const message = await shareContent(appData.app.title, 'כלי קצר למציאת ישיבה שמתאימה לסגנון הלימוד ולערכים שלך.');
     showNotice(message);
@@ -444,7 +451,6 @@ const MAHANAYIM_THRESHOLDS = {
 
 const MAHANAYIM_BONUS = 5;
 const AREA_MATCH_BONUS = 12;
-const DISPLAY_SCORE_FLOOR = 60;
 
 function computeScores(limit = 3) {
   const userProfile = buildUserProfile();
@@ -464,16 +470,15 @@ function computeScores(limit = 3) {
         && userProfile.conservatism_authority <= MAHANAYIM_THRESHOLDS.conservatism_authority
         && userProfile.classic_study <= MAHANAYIM_THRESHOLDS.classic_study;
       const conditionalBonus = receivesMahanayimBonus ? MAHANAYIM_BONUS : 0;
-      const areaMatchBonus = state.preferredAreaGroup !== 'any'
-        && yeshiva.areaGroup === state.preferredAreaGroup
+      const areaMatchBonus = state.preferredAreaGroups.length > 0
+        && state.preferredAreaGroups.includes(yeshiva.areaGroup)
         ? AREA_MATCH_BONUS
         : 0;
       const adjustedScore = clamp(baseScore + conditionalBonus + areaMatchBonus, 0, 100);
-      const displayScore = DISPLAY_SCORE_FLOOR + (adjustedScore / 100) * (100 - DISPLAY_SCORE_FLOOR);
 
       return {
         ...yeshiva,
-        score: Number(Math.min(displayScore, 100).toFixed(1)),
+        score: Number(adjustedScore.toFixed(1)),
         conditionalBonus,
         areaMatchBonus,
         userProfile
@@ -1920,6 +1925,7 @@ function render() {
   }
 
   state.adminAuthenticated = false;
+  document.querySelector('main.card')?.classList.toggle('results-mode', state.completed);
 
   if (state.completed) {
     renderResults();

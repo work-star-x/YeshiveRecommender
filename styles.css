@@ -99,6 +99,66 @@ h1 {
   padding: 1rem;
 }
 
+.card.results-mode {
+  background: transparent;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.results-mode .results-export {
+  padding: 0;
+  background: transparent;
+}
+
+.results-mode .results-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.results-mode #share-results-button {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #d0def5, #a9c1e9);
+  color: #102047;
+}
+
+.results-mode #share-results-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.results-mode #suggest-yeshiva-button,
+.results-mode .reset-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(208, 222, 245, 0.35);
+  color: #e6eefb;
+}
+
+.results-mode .reset-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 520px) {
+  .results-mode .results-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
 .progress-wrap {
   margin-bottom: 1rem;
 }
@@ -297,11 +357,8 @@ h1 {
 }
 
 .result-card.rank-2 {
-  --row-width: 92%;
-}
-
-.result-card.rank-3 {
-  --row-width: 84%;
+  background: linear-gradient(100deg, #8eabce, #6d8ebb);
+  color: #102047;
 }
 
 .result-rank {
@@ -409,6 +466,41 @@ h1 {
   color: var(--text);
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+fieldset.area-preference-control {
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.area-preference-control legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.area-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.area-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fbff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.area-option:has(input:checked) {
+  border-color: #4b78ad;
+  background: #d7e5f7;
 }
 
 .area-preference-control select,
