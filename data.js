@@ -535,8 +535,8 @@ window.APP_DATA = {
       description: 'ישיבת הסדר בגליל המדגישה התפתחות אישית, מודעות עצמית ושילוב תורה עם עשייה והכנה לשירות הצבאי.',
       profileTags: {
         military: 6,
-        social_engagement: 9,
-        cultural_openness: 7,
+        social_engagement: 8,
+        cultural_openness: 6,
         conservatism_authority: 5,
         classic_study: 8,
         personal_attention: 8,
@@ -554,7 +554,7 @@ window.APP_DATA = {
         military: 4,
         social_engagement: 7,
         cultural_openness: 5,
-        conservatism_authority: 8,
+        conservatism_authority: 9,
         classic_study: 10,
         personal_attention: 6,
         physical_conditions: 9
@@ -569,12 +569,12 @@ window.APP_DATA = {
       description: 'ישיבה גדולה במצפה רמון, המדגישה עמל תורה, לימוד גמרא בעיון ובבקיאות ולימודי אמונה.',
       profileTags: {
         military: 7,
-        social_engagement: 7,
-        cultural_openness: 4,
+        social_engagement: 5,
+        cultural_openness: 2,
         conservatism_authority: 9,
         classic_study: 9,
-        personal_attention: 6,
-        physical_conditions: 7
+        personal_attention: 5,
+        physical_conditions: 5
       }
     },
     {
@@ -585,13 +585,13 @@ window.APP_DATA = {
       areaGroup: 'ירושלים והסביבה',
       description: 'ישיבה המשלבת לימוד תורה מעמיק עם מחשבה יהודית, חסידות ובירור משמעות התורה ביחס לחיים ולעולם.',
       profileTags: {
-        military: 8,
-        social_engagement: 7,
-        cultural_openness: 9,
+        military: 7,
+        social_engagement: 8,
+        cultural_openness: 10,
         conservatism_authority: 3,
         classic_study: 2,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 9
       }
     },
     {
@@ -603,12 +603,12 @@ window.APP_DATA = {
       description: 'ישיבה בלב תל אביב, המחברת לימוד תורה אינטנסיבי עם פעילות חינוכית וחברתית בעיר הגדולה.',
       profileTags: {
         military: 9,
-        social_engagement: 9,
-        cultural_openness: 7,
-        conservatism_authority: 6,
+        social_engagement: 7,
+        cultural_openness: 3,
+        conservatism_authority: 9,
         classic_study: 8,
         personal_attention: 6,
-        physical_conditions: 6
+        physical_conditions: 4
       }
     },
     {
@@ -619,12 +619,12 @@ window.APP_DATA = {
       areaGroup: 'צפון',
       description: 'ישיבת הסדר המזוהה עם תורת ארץ ישראל, בדגש על בניית אישיות, אמונה ואחריות לכלל האומה.',
       profileTags: {
-        military: 4,
+        military: 5,
         social_engagement: 8,
-        cultural_openness: 6,
+        cultural_openness: 5,
         conservatism_authority: 7,
-        classic_study: 9,
-        personal_attention: 7,
+        classic_study: 8,
+        personal_attention: 10,
         physical_conditions: 7
       }
     },
@@ -636,13 +636,13 @@ window.APP_DATA = {
       areaGroup: 'ירושלים והסביבה',
       description: 'ישיבת הדגל ההיסטורית של הציונות הדתית, הממשיכה את דרכו של הרב קוק ומשלבת לימוד ש"ס עם מחשבת ישראל.',
       profileTags: {
-        military: 8,
-        social_engagement: 7,
+        military: 5,
+        social_engagement: 4,
         cultural_openness: 2,
         conservatism_authority: 10,
-        classic_study: 7,
-        personal_attention: 4,
-        physical_conditions: 7
+        classic_study: 10,
+        personal_attention: 2,
+        physical_conditions: 4
       }
     },
     {
@@ -653,13 +653,13 @@ window.APP_DATA = {
       areaGroup: 'צפון',
       description: 'ישיבה משפחתית המדגישה קשר אישי, מגוון דעות, בנייה תורנית ועשייה חברתית וחסד.',
       profileTags: {
-        military: 4,
+        military: 6,
         social_engagement: 10,
-        cultural_openness: 7,
+        cultural_openness: 6,
         conservatism_authority: 5,
         classic_study: 6,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 6
       }
     },
     {
@@ -670,13 +670,13 @@ window.APP_DATA = {
       areaGroup: 'דרום',
       description: 'ישיבת הסדר בעלת מורשת ההתיישבות בימית ובגוש קטיף, המדגישה תורת ארץ ישראל ופעילות קהילתית באשדוד.',
       profileTags: {
-        military: 4,
+        military: 5,
         social_engagement: 8,
         cultural_openness: 5,
-        conservatism_authority: 7,
-        classic_study: 8,
-        personal_attention: 6,
-        physical_conditions: 4
+        conservatism_authority: 6,
+        classic_study: 7,
+        personal_attention: 7,
+        physical_conditions: 5
       }
     },
     {
@@ -691,8 +691,8 @@ window.APP_DATA = {
         social_engagement: 8,
         cultural_openness: 9,
         conservatism_authority: 4,
-        classic_study: 8,
-        personal_attention: 7,
+        classic_study: 6,
+        personal_attention: 4,
         physical_conditions: 8
       }
     },
@@ -704,13 +704,13 @@ window.APP_DATA = {
       areaGroup: 'יהודה ושומרון',
       description: 'ישיבה קטנה ואינטימית בשומרון, בעלת רמה לימודית גבוהה ואווירה נינוחה עם דגש על התפתחות אישית.',
       profileTags: {
-        military: 7,
-        social_engagement: 6,
-        cultural_openness: 6,
+        military: 5,
+        social_engagement: 2,
+        cultural_openness: 3,
         conservatism_authority: 7,
         classic_study: 8,
-        personal_attention: 9,
-        physical_conditions: 6
+        personal_attention: 6,
+        physical_conditions: 5
       }
     },
     {
@@ -725,7 +725,7 @@ window.APP_DATA = {
         social_engagement: 6,
         cultural_openness: 5,
         conservatism_authority: 7,
-        classic_study: 8,
+        classic_study: 6,
         personal_attention: 9,
         physical_conditions: 6
       }
@@ -739,7 +739,7 @@ window.APP_DATA = {
       description: 'ישיבה גדולה בעיר האבות, המזוהה עם תורת הרב קוק ושואפת להצמיח תלמידי חכמים ומנהיגות תורנית.',
       profileTags: {
         military: 8,
-        social_engagement: 8,
+        social_engagement: 7,
         cultural_openness: 3,
         conservatism_authority: 9,
         classic_study: 9,
@@ -756,12 +756,12 @@ window.APP_DATA = {
       description: 'ישיבה המזוהה עם הרב שג"ר, המדגישה חיפוש רוחני, כנות, חסידות ושיח פתוח עם העולם הפנימי והחיצוני.',
       profileTags: {
         military: 4,
-        social_engagement: 7,
+        social_engagement: 6,
         cultural_openness: 10,
         conservatism_authority: 3,
-        classic_study: 7,
+        classic_study: 3,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 3
       }
     },
     {
@@ -773,12 +773,12 @@ window.APP_DATA = {
       description: 'ישיבה בעלת אופי חסידי בהשראת הרב עדין שטיינזלץ, עם דגש על לימוד גמרא בעומק ובהיקף.',
       profileTags: {
         military: 4,
-        social_engagement: 6,
+        social_engagement: 5,
         cultural_openness: 8,
         conservatism_authority: 4,
-        classic_study: 6,
+        classic_study: 3,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 4
       }
     },
     {
@@ -789,13 +789,13 @@ window.APP_DATA = {
       areaGroup: 'צפון',
       description: 'ישיבת הסדר בכרמיאל המדגישה לימוד מעמיק, עבודת מידות, חבורה, אחריות אישית ורגישות לזולת.',
       profileTags: {
-        military: 4,
-        social_engagement: 8,
-        cultural_openness: 7,
+        military: 7,
+        social_engagement: 9,
+        cultural_openness: 8,
         conservatism_authority: 5,
-        classic_study: 7,
+        classic_study: 4,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 7
       }
     }
   ]

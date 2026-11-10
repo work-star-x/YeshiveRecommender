@@ -108,7 +108,7 @@ h1 {
 }
 
 .results-mode .results-export {
-  padding: 0;
+  padding: 20px;
   background: transparent;
   overflow: visible;
 }

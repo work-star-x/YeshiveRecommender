@@ -232,10 +232,7 @@ async function shareResultsImage(title, text) {
     pixelRatio: 2,
     cacheBust: true,
     skipFonts: true,
-    backgroundColor: '#102047',
-    width: exportNode.offsetWidth + 40,
-    height: exportNode.offsetHeight + 40,
-    style: { margin: '20px' }
+    backgroundColor: '#102047'
   });
   if (!imageBlob) throw new Error('Could not render the results image.');
 
