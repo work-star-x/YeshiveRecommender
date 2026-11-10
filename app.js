@@ -247,7 +247,7 @@ function downloadFile(file) {
   window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
 }
 
-async function shareResultsImage(title, text, imageFilePromise) {
+async function shareResultsImage(title, text, imageFilePromise, fallbackText = text) {
   const url = getShareUrl();
   const canShare = typeof navigator.share === 'function';
 
@@ -262,14 +262,14 @@ async function shareResultsImage(title, text, imageFilePromise) {
         console.warn('שיתוף התמונה נכשל, מנסה לשתף טקסט.', error);
       }
     }
-    await navigator.share({ title, text, url });
+    await navigator.share({ title, text: fallbackText, url });
     return 'השיתוף נפתח.';
   }
 
   const imageFile = await imageFilePromise;
   if (imageFile) downloadFile(imageFile);
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(`${text}\n${url}`);
+    await navigator.clipboard.writeText(`${fallbackText}\n${url}`);
     return imageFile ? 'התמונה הורדה והקישור הועתק.' : 'הקישור הועתק ללוח.';
   }
   return imageFile ? 'התמונה הורדה.' : 'לא ניתן לשתף כרגע.';
@@ -498,6 +498,9 @@ function renderResults() {
   document.querySelector('main.card')?.classList.add('results-mode');
   const results = computeScores();
   const resultsShareText = 'אלו הישיבות שיצאו לי, בדוק את שלך';
+  const resultsFallbackText = `${resultsShareText}:\n${results
+    .map((yeshiva, index) => `${index + 1}. ${yeshiva.name} - ${Math.round(yeshiva.score)}%`)
+    .join('\n')}`;
 
   root.innerHTML = `
     <section class="results-panel">
@@ -539,7 +542,7 @@ function renderResults() {
   document.getElementById('share-results-button').addEventListener('click', async () => {
     let message;
     try {
-      message = await shareResultsImage('ההתאמות שלי לישיבה', resultsShareText, imageFilePromise);
+      message = await shareResultsImage('ההתאמות שלי לישיבה', resultsShareText, imageFilePromise, resultsFallbackText);
     } catch (error) {
       if (error?.name === 'AbortError') return;
       console.error('לא ניתן ליצור או לשתף תמונת תוצאות.', error);
