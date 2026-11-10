@@ -450,12 +450,12 @@ const MAHANAYIM_THRESHOLDS = {
 };
 
 const MAHANAYIM_BONUS = 5;
-const AREA_MATCH_BONUS = 12;
-
 function computeScores(limit = 3) {
   const userProfile = buildUserProfile();
 
   return appData.yeshivot
+    .filter((yeshiva) => state.preferredAreaGroups.length === 0
+      || state.preferredAreaGroups.includes(yeshiva.areaGroup))
     .map((yeshiva) => {
       const parameterValues = appData.parameters.map((parameter) => {
         const userValue = Number(userProfile[parameter.id] || 5);
@@ -470,17 +470,12 @@ function computeScores(limit = 3) {
         && userProfile.conservatism_authority <= MAHANAYIM_THRESHOLDS.conservatism_authority
         && userProfile.classic_study <= MAHANAYIM_THRESHOLDS.classic_study;
       const conditionalBonus = receivesMahanayimBonus ? MAHANAYIM_BONUS : 0;
-      const areaMatchBonus = state.preferredAreaGroups.length > 0
-        && state.preferredAreaGroups.includes(yeshiva.areaGroup)
-        ? AREA_MATCH_BONUS
-        : 0;
-      const adjustedScore = clamp(baseScore + conditionalBonus + areaMatchBonus, 0, 100);
+      const adjustedScore = clamp(baseScore + conditionalBonus, 0, 100);
 
       return {
         ...yeshiva,
         score: Number(adjustedScore.toFixed(1)),
         conditionalBonus,
-        areaMatchBonus,
         userProfile
       };
     })
@@ -489,6 +484,7 @@ function computeScores(limit = 3) {
 }
 
 function renderResults() {
+  document.querySelector('main.card')?.classList.add('results-mode');
   const results = computeScores();
   const resultsShareText = 'אלו הישיבות שיצאו לי, בדוק את שלך';
 
@@ -511,6 +507,18 @@ function renderResults() {
             )
             .join('')}
         </div>
+      </div>
+
+      <div class="results-descriptions">
+        ${results
+          .filter((yeshiva) => yeshiva.description)
+          .map((yeshiva) => `
+            <article class="result-description">
+              <h4>${escapeHtml(yeshiva.name)}</h4>
+              <p>${escapeHtml(yeshiva.description)}</p>
+            </article>
+          `)
+          .join('')}
       </div>
 
       <div class="results-actions">
