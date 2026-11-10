@@ -280,7 +280,7 @@ function renderWelcome() {
       <h2>נמצא את הישיבה<br />שתתאים לך</h2>
       <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
       <fieldset class="area-preference-control">
-        <legend>אזורי לימודים מועדפים</legend>
+        <legend>בחר אזורי לימוד:  </legend>
         <div class="area-options">
           <label class="area-option"><input type="checkbox" id="area-all" ${state.preferredAreaGroups.length === 0 ? 'checked' : ''} /><span>כל האזורים</span></label>
           ${getAreaGroups().map((areaGroup) => `<label class="area-option"><input type="checkbox" class="area-checkbox" value="${escapeHtml(areaGroup)}" ${state.preferredAreaGroups.includes(areaGroup) ? 'checked' : ''} /><span>${escapeHtml(areaGroup)}</span></label>`).join('')}

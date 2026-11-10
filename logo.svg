@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="95 130 610 490" role="img" aria-label="ספר פתוח ומגדלת">
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <path d="M150 290H618Q628 290 630 300L654 570Q656 586 640 586H126Q110 586 112 570L138 300Q140 290 150 290Z" fill="#78a1d4" stroke="#17345f" stroke-width="14"/>
+    <path d="M330 586Q350 612 380 612Q410 612 430 586Z" fill="#17345f" stroke="#17345f" stroke-width="10"/>
+    <path d="M178 262Q250 242 312 250L372 300V570Q270 515 152 532Z" fill="#fff" stroke="#17345f" stroke-width="8"/>
+    <path d="M372 300L580 292L610 532Q480 515 372 570Z" fill="#fff" stroke="#17345f" stroke-width="8"/>
+    <g fill="none" stroke="#78a1d4" stroke-width="14">
+      <path d="M210 320Q260 310 305 318"/>
+      <path d="M205 368Q260 355 340 372"/>
+      <path d="M200 420Q260 408 340 420"/>
+      <path d="M195 466Q235 458 265 462"/>
+      <path d="M290 462Q330 462 360 478"/>
+      <path d="M412 470Q440 460 465 462"/>
+      <path d="M490 462Q540 458 580 470"/>
+    </g>
+    <path d="M548 415L655 525" fill="none" stroke="#17345f" stroke-width="56"/>
+    <path d="M548 415L655 525" fill="none" stroke="#4b78ad" stroke-width="34"/>
+    <circle cx="450" cy="285" r="127" fill="#fff" fill-opacity="0.6" stroke="#17345f" stroke-width="30"/>
+    <g fill="none" stroke="#4b78ad" stroke-opacity="0.55" stroke-width="14">
+      <path d="M385 240Q450 215 530 218"/>
+      <path d="M385 322Q460 287 545 305"/>
+      <path d="M395 385Q460 370 525 385"/>
+    </g>
+  </g>
+</svg>

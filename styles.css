@@ -60,9 +60,11 @@ select {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   padding: 7px;
+  object-fit: contain;
+  box-sizing: border-box;
   border-radius: 14px;
   background: #d7e5f7;
   box-shadow: 0 8px 20px rgba(5, 18, 45, 0.28);
