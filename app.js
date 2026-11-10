@@ -233,7 +233,9 @@ async function shareResultsImage(title, text) {
     cacheBust: true,
     skipFonts: true,
     backgroundColor: '#102047',
-    style: { padding: '20px' }
+    width: exportNode.offsetWidth + 40,
+    height: exportNode.offsetHeight + 40,
+    style: { margin: '20px' }
   });
   if (!imageBlob) throw new Error('Could not render the results image.');
 
@@ -507,18 +509,6 @@ function renderResults() {
             )
             .join('')}
         </div>
-      </div>
-
-      <div class="results-descriptions">
-        ${results
-          .filter((yeshiva) => yeshiva.description)
-          .map((yeshiva) => `
-            <article class="result-description">
-              <h4>${escapeHtml(yeshiva.name)}</h4>
-              <p>${escapeHtml(yeshiva.description)}</p>
-            </article>
-          `)
-          .join('')}
       </div>
 
       <div class="results-actions">
