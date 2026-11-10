@@ -222,11 +222,10 @@ async function shareContent(title, text) {
   }
 }
 
-async function shareResultsImage(title, text) {
+// Rendered ahead of the click so navigator.share runs while the tap's user activation is still valid.
+async function createResultsImageFile() {
   const exportNode = document.getElementById('results-export');
-  if (!exportNode || !window.htmlToImage?.toBlob) {
-    throw new Error('Image export is unavailable.');
-  }
+  if (!exportNode || !window.htmlToImage?.toBlob) return null;
 
   const imageBlob = await window.htmlToImage.toBlob(exportNode, {
     pixelRatio: 2,
@@ -234,33 +233,46 @@ async function shareResultsImage(title, text) {
     skipFonts: true,
     backgroundColor: '#102047'
   });
-  if (!imageBlob) throw new Error('Could not render the results image.');
+  return imageBlob ? new File([imageBlob], 'yeshiva-matches.png', { type: 'image/png' }) : null;
+}
 
-  const imageFile = new File([imageBlob], 'yeshiva-matches.png', { type: 'image/png' });
-  const url = getShareUrl();
-  if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [imageFile] })) {
-    await navigator.share({ files: [imageFile], title, text, url });
-    return 'התמונה והתוצאות שותפו.';
-  }
-
-  const imageUrl = URL.createObjectURL(imageBlob);
+function downloadFile(file) {
+  const fileUrl = URL.createObjectURL(file);
   const downloadLink = document.createElement('a');
-  downloadLink.href = imageUrl;
-  downloadLink.download = 'yeshiva-matches.png';
+  downloadLink.href = fileUrl;
+  downloadLink.download = file.name;
   document.body.append(downloadLink);
   downloadLink.click();
   downloadLink.remove();
-  window.setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+  window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+}
 
-  if (typeof navigator.share === 'function') {
+async function shareResultsImage(title, text, imageFilePromise) {
+  const url = getShareUrl();
+  const canShare = typeof navigator.share === 'function';
+
+  if (canShare) {
+    const imageFile = await Promise.race([imageFilePromise, new Promise((resolve) => window.setTimeout(resolve, 1500, undefined))]);
+    if (imageFile && navigator.canShare?.({ files: [imageFile] })) {
+      try {
+        await navigator.share({ files: [imageFile], title, text, url });
+        return 'התמונה והתוצאות שותפו.';
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        console.warn('שיתוף התמונה נכשל, מנסה לשתף טקסט.', error);
+      }
+    }
     await navigator.share({ title, text, url });
-    return 'התמונה הורדה וקישור השיתוף נפתח.';
+    return 'השיתוף נפתח.';
   }
+
+  const imageFile = await imageFilePromise;
+  if (imageFile) downloadFile(imageFile);
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(`${text}\n${url}`);
-    return 'התמונה הורדה והקישור הועתק.';
+    return imageFile ? 'התמונה הורדה והקישור הועתק.' : 'הקישור הועתק ללוח.';
   }
-  return 'התמונה הורדה.';
+  return imageFile ? 'התמונה הורדה.' : 'לא ניתן לשתף כרגע.';
 }
 
 function showNotice(message) {
@@ -277,7 +289,7 @@ function renderWelcome() {
   root.innerHTML = `
     <section class="welcome-panel">
       <span class="welcome-kicker">2 דקות ו...</span>
-      <h2>נמצא את הישיבה<br />שתתאים לך</h2>
+      <h2>נמצא את הישיבה<br />שלך</h2>
       <p>ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
       <fieldset class="area-preference-control">
         <legend>בחר אזורי לימוד:  </legend>
@@ -520,10 +532,14 @@ function renderResults() {
     </section>
   `;
 
+  const imageFilePromise = createResultsImageFile().catch((error) => {
+    console.error('לא ניתן ליצור תמונת תוצאות.', error);
+    return null;
+  });
   document.getElementById('share-results-button').addEventListener('click', async () => {
     let message;
     try {
-      message = await shareResultsImage('ההתאמות שלי לישיבה', resultsShareText);
+      message = await shareResultsImage('ההתאמות שלי לישיבה', resultsShareText, imageFilePromise);
     } catch (error) {
       if (error?.name === 'AbortError') return;
       console.error('לא ניתן ליצור או לשתף תמונת תוצאות.', error);

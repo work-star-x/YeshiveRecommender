@@ -1,7 +1,7 @@
 window.APP_DATA = {
   app: {
-    title: 'מתאם הישיבות',
-    subtitle: 'מצא את ההתאמה הטובה ביותר לישיבה על פי סגנון הלימוד, הערכים והיעדים שלך.'
+    title: 'ישיבומטר',
+    subtitle: 'מצא את הישיבה שמתאימה לך'
   },
   parameters: [
     { id: 'military', label: 'אורך השירות', description: '(גבוהה - שירות מלא)' },
