@@ -374,7 +374,8 @@ begin
 
   delete from public.yeshiva_analytics
   where yeshiva_id is not null;
-  delete from public.parameter_distribution;
+  delete from public.parameter_distribution
+  where parameter_id is not null;
   delete from public.analytics_counters
   where event_type in ('completion', 'share_home', 'share_results');
 end;
@@ -414,7 +415,8 @@ begin
 
   delete from public.yeshiva_analytics
   where yeshiva_id is not null;
-  delete from public.parameter_distribution;
+  delete from public.parameter_distribution
+  where parameter_id is not null;
   delete from public.analytics_counters
   where event_type in ('completion', 'share_home', 'share_results');
 end;

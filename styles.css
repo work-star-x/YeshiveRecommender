@@ -895,6 +895,7 @@ fieldset.area-preference-control {
 }
 
 .admin-login {
+  --muted: #425674;
   max-width: 480px;
   min-height: 380px;
   margin: 0 auto;
@@ -921,6 +922,7 @@ fieldset.area-preference-control {
 }
 
 .admin-panel {
+  --muted: #425674;
   animation: fadeUp 0.3s ease;
 }
 
@@ -1247,6 +1249,7 @@ fieldset.area-preference-control {
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: 9px;
+  color: var(--text);
   background: white;
 }
 
@@ -2050,13 +2053,25 @@ body {
   box-shadow: 0 2px 8px rgba(20, 45, 82, 0.12);
 }
 
+.admin-panel input::placeholder,
+.admin-panel textarea::placeholder,
+.admin-login input::placeholder {
+  color: #536782;
+  opacity: 1;
+}
+
+.admin-panel .nav-button.primary,
+.admin-login .nav-button.primary {
+  background: linear-gradient(135deg, #244c80, #386692);
+}
+
 .admin-tab:hover,
 .text-button:hover {
   border-color: rgba(64, 112, 172, 0.5);
 }
 
 .parameter-subtext {
-  color: #667996;
+  color: #425674;
 }
 
 .parameter-weight:focus-visible {

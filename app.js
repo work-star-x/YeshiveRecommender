@@ -2046,6 +2046,7 @@ function advanceQuestion(questions, firstPartCount) {
 
 function render() {
   if (window.location.hash === '#admin-secret') {
+    document.querySelector('main.card')?.classList.remove('results-mode');
     if (state.adminAuthenticated) {
       renderAdminPanel();
     } else {
