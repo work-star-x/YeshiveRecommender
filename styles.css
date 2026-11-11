@@ -201,6 +201,113 @@ h1 {
   animation: fadeUp 0.32s ease;
 }
 
+.rating-scale-helper {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  direction: ltr;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.option-grid.rating-option-grid {
+  width: min(100%, 22rem);
+  margin-inline: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.rating-option-grid .option-button {
+  text-align: center;
+  direction: ltr;
+}
+
+.rating-option-grid .option-button strong {
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.rating-transition-panel {
+  min-height: 410px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  animation: fadeUp 0.32s ease;
+}
+
+.rating-transition-panel h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  color: var(--brand-dark);
+}
+
+.rating-transition-panel > p:not(.eyebrow) {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.rating-transition-art {
+  position: relative;
+  width: 110px;
+  height: 100px;
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+}
+
+.rating-ruler {
+  width: 68px;
+  height: 68px;
+  overflow: visible;
+  animation: rating-ruler-sway 1.8s ease-in-out infinite;
+}
+
+.rating-spark {
+  position: absolute;
+  color: #d39a45;
+  animation: rating-sparkle 1.8s ease-in-out infinite;
+}
+
+.spark-one {
+  top: 10px;
+  right: 12px;
+}
+
+.spark-two {
+  top: 32px;
+  left: 3px;
+  animation-delay: 0.45s;
+}
+
+.spark-three {
+  right: 4px;
+  bottom: 8px;
+  animation-delay: 0.9s;
+}
+
+@keyframes rating-ruler-sway {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@keyframes rating-sparkle {
+  0%, 100% { opacity: 0.45; transform: scale(0.8) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.2) rotate(25deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rating-transition-panel,
+  .rating-ruler,
+  .rating-spark {
+    animation: none;
+  }
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -1741,6 +1848,18 @@ fieldset.area-preference-control {
   .request-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .rating-option-grid {
+    gap: 0.45rem;
+  }
+
+  .rating-option-grid .option-button {
+    padding: 0.75rem 0.4rem;
+  }
+
+  .rating-scale-helper {
+    font-size: 0.7rem;
   }
 
   .parameter-editor-card,

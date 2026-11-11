@@ -15,7 +15,7 @@ window.APP_DATA = {
   questions: [
     {
       id: 'q1',
-      text: 'תלמידי ישיבות הסדר ברובם צריכים לשרת 3 שנים בצבא?',
+      text: 'תלמידי ישיבות ברובם צריכים לשרת 3 שנים בצבא?',
       options: [
         { id: 'yes', label: 'כן', tags: ['military', 'social_engagement'], weights: { military: 3, social_engagement: 2 } },
         { id: 'no', label: 'לא', tags: ['military', 'social_engagement'], weights: { military: -3, social_engagement: -2 } }
@@ -39,6 +39,7 @@ window.APP_DATA = {
     },
     {
       id: 'q4',
+      type: 'rating',
       text: 'חשוב לי ללמוד בישיבה שיש לה שליחות התיישבותית.',
       options: [
         { id: 'yes', label: 'כן', tags: ['social_engagement'], weights: { social_engagement: 1 } },
@@ -55,7 +56,8 @@ window.APP_DATA = {
     },
     {
       id: 'q6',
-      text: 'אני מאמין שלימוד "חכמה מן החוץ" זה דבר שיכול לקרות גם בזמן הישיבה.',
+      type: 'rating',
+      text: 'אני מאמין שלימוד "חכמה מן החוץ" (פילוסופיה, פסיכולוגיה, ספרות וכו\') זה דבר שיכול לקרות גם בזמן הישיבה.',
       options: [
         { id: 'yes', label: 'כן', tags: ['cultural_openness'], weights: { cultural_openness: 2 } },
         { id: 'no', label: 'לא', tags: ['cultural_openness'], weights: { cultural_openness: -2 } }
@@ -63,6 +65,7 @@ window.APP_DATA = {
     },
     {
       id: 'q7',
+      type: 'rating',
       text: 'בתקופת הישיבה עדיף לשמור מרחק מתרבות כללית (סרטים, מוזיקה וכו\').',
       options: [
         { id: 'yes', label: 'כן', tags: ['conservatism_authority', 'cultural_openness'], weights: { conservatism_authority: 3, cultural_openness: -2 } },
@@ -87,6 +90,7 @@ window.APP_DATA = {
     },
     {
       id: 'q10',
+      type: 'rating',
       text: 'אני מעדיף ישיבה קטנה שבה הקשר האישי עם הרבנים חזק יותר, על פני ישיבה גדולה שבה הקשר האישי חלש יותר.',
       options: [
         { id: 'yes', label: 'כן', tags: ['personal_attention'], weights: { personal_attention: 3 } },
@@ -103,6 +107,7 @@ window.APP_DATA = {
     },
     {
       id: 'q12',
+      type: 'rating',
       text: 'יצירה – כמו מוזיקה, אומנות, כתיבה יכולה להיות חלק מעבודת ה\' בישיבה.',
       options: [
         { id: 'yes', label: 'כן', tags: ['cultural_openness', 'classic_study'], weights: { cultural_openness: 3, classic_study: -3 } },
@@ -119,6 +124,7 @@ window.APP_DATA = {
     },
     {
       id: 'q14',
+      type: 'rating',
       text: 'חשוב לי שבישיבה יהיה קשר בין הצעירים והבוגרים.',
       options: [
         { id: 'yes', label: 'כן', tags: ['personal_attention'], weights: { personal_attention: 2 } },
@@ -127,6 +133,7 @@ window.APP_DATA = {
     },
     {
       id: 'q15',
+      type: 'rating',
       text: 'ללמוד תורה עם מחשבים זה דבר רע.',
       options: [
         { id: 'yes', label: 'כן', tags: ['conservatism_authority', 'classic_study'], weights: { conservatism_authority: 3, classic_study: 1 } },
@@ -795,6 +802,23 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 4,
         personal_attention: 8,
+        physical_conditions: 7
+      }
+    },
+    {
+      id: 'yeshiva_40',
+      name: 'מעלה גבלוע',
+      shortName: 'מעלה גבלוע',
+      area: 'צפון',
+      areaGroup: 'צפון',
+      description: '',
+      profileTags: {
+        military: 8,
+        social_engagement: 5,
+        cultural_openness: 10,
+        conservatism_authority: 2,
+        classic_study: 3,
+        personal_attention: 6,
         physical_conditions: 7
       }
     }

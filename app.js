@@ -3,6 +3,46 @@ function stripShortYeshivaDescriptions(yeshivot) {
 }
 
 const appData = window.APP_DATA;
+const RATING_QUESTION_IDS = new Set(['q4', 'q6', 'q7', 'q10', 'q12', 'q14', 'q15']);
+
+function normalizeQuestions(questions) {
+  return questions.map((question) => {
+    const type = question.type || (RATING_QUESTION_IDS.has(question.id) ? 'rating' : 'yes-no');
+    if (type !== 'rating') return { ...question, type };
+
+    const isRatingOptions = question.options.every((option) => /^[1-4]$/.test(String(option.id)));
+    if (isRatingOptions) return { ...question, type };
+
+    const agreeOption = question.options.find((option) => option.id === 'yes' || option.label?.trim() === 'כן');
+    const disagreeOption = question.options.find((option) => option.id === 'no' || option.label?.trim() === 'לא');
+    if (!agreeOption || !disagreeOption) return { ...question, type };
+
+    const tags = [...new Set([
+      ...(agreeOption.tags || []),
+      ...(disagreeOption.tags || []),
+      ...Object.keys(agreeOption.weights || {}),
+      ...Object.keys(disagreeOption.weights || {})
+    ])];
+    const agreeWeights = agreeOption.weights || {};
+    const disagreeWeights = disagreeOption.weights || {};
+    return {
+      ...question,
+      type,
+      options: [1, 2, 3, 4].map((value) => {
+        const ratio = (value - 1) / 3;
+        const weights = Object.fromEntries(tags.map((tag) => {
+          const agreeWeight = Number(agreeWeights[tag] ?? 1);
+          const disagreeWeight = Number(disagreeWeights[tag] ?? -agreeWeight);
+          const weight = disagreeWeight + ((agreeWeight - disagreeWeight) * ratio);
+          return [tag, Number(weight.toFixed(2))];
+        }));
+        return { id: String(value), label: String(value), tags, weights };
+      })
+    };
+  });
+}
+
+appData.questions = normalizeQuestions(appData.questions);
 appData.yeshivot = stripShortYeshivaDescriptions(appData.yeshivot);
 const bundledContent = JSON.parse(JSON.stringify({ questions: appData.questions, yeshivot: appData.yeshivot }));
 const supabaseConfig = window.SUPABASE_CONFIG || {};
@@ -19,6 +59,8 @@ const supabaseClient = hasSupabaseConfig
 
 const state = {
   currentIndex: 0,
+  ratingTransition: false,
+  ratingTransitionTimeout: null,
   answers: {},
   preferredAreaGroups: [],
   completed: false,
@@ -50,7 +92,7 @@ async function loadCloudContent() {
   }
 
   if (data?.questions && data?.yeshivot) {
-    appData.questions = data.questions;
+    appData.questions = normalizeQuestions(data.questions);
     appData.yeshivot = stripShortYeshivaDescriptions(data.yeshivot);
     if (Array.isArray(data.parameters)) initializeParameters(data.parameters);
   }
@@ -335,11 +377,18 @@ function renderWelcome() {
   });
 }
 
-function buildQuestionMarkup(question, index) {
-  const allQuestions = appData.questions;
+function getOrderedQuestions() {
+  return [
+    ...appData.questions.filter((question) => question.type !== 'rating'),
+    ...appData.questions.filter((question) => question.type === 'rating')
+  ];
+}
+
+function buildQuestionMarkup(question, index, allQuestions) {
   const options = [...question.options].sort((left, right) => Number(left.id !== 'no') - Number(right.id !== 'no'));
   const selectedOptionId = state.answers[question.id];
   const progressPercent = (index / allQuestions.length) * 100;
+  const isRating = question.type === 'rating';
 
   return `
     <div class="question-panel">
@@ -355,7 +404,14 @@ function buildQuestionMarkup(question, index) {
 
       <h2 class="question-heading">${escapeHtml(question.text)}</h2>
 
-      <div class="option-grid" role="list">
+      ${isRating ? `
+        <div class="rating-scale-helper" aria-hidden="true">
+          <span>לא מסכים בכלל</span>
+          <span>מסכים ממש</span>
+        </div>
+      ` : ''}
+
+      <div class="option-grid ${isRating ? 'rating-option-grid' : ''}" role="list">
         ${options
           .map(
             (option) => `
@@ -365,6 +421,7 @@ function buildQuestionMarkup(question, index) {
                 data-question-id="${escapeHtml(question.id)}"
                 data-option-id="${escapeHtml(option.id)}"
                 aria-pressed="${selectedOptionId === option.id}"
+                ${isRating ? `aria-label="${escapeHtml(option.label)} - ${option.id === '1' ? 'לא מסכים בכלל' : option.id === '4' ? 'מסכים ממש' : 'דרגת הסכמה'}"` : ''}
               >
                 <strong>${escapeHtml(option.label)}</strong>
               </button>
@@ -918,13 +975,21 @@ function requestMatchesYeshiva(request, yeshiva) {
     .some((name) => normalizeYeshivaName(name) === requestName);
 }
 
+function getQuestionOption(question, optionId) {
+  const option = question?.options.find((item) => item.id === optionId);
+  if (option || question?.type !== 'rating') return option;
+  if (optionId === 'yes') return question.options.find((item) => item.id === '4');
+  if (optionId === 'no') return question.options.find((item) => item.id === '1');
+  return undefined;
+}
+
 function deriveSubmissionTagWeights(requests) {
   const submissionWeights = requests.map((request) => {
     const tagCounts = new Map();
     let answeredQuestions = 0;
 
     appData.questions.forEach((question) => {
-      const selectedOption = question.options.find((option) => option.id === request.answers?.[question.id]);
+      const selectedOption = getQuestionOption(question, request.answers?.[question.id]);
       if (!selectedOption) return;
 
       answeredQuestions += 1;
@@ -1132,8 +1197,11 @@ async function applySubmissionGroup(requests) {
 function renderSubmissionCard(request, isNewSuggestion = false) {
   const requestAnswers = Object.entries(request.answers || {}).map(([questionId, optionId]) => {
     const question = appData.questions.find((item) => item.id === questionId);
-    const option = question?.options.find((item) => item.id === optionId);
-    return `<li>${escapeHtml(question?.text || questionId)}: ${escapeHtml(option?.label || optionId)}</li>`;
+    const option = getQuestionOption(question, optionId);
+    const legacyRatingAnswer = question?.type === 'rating' && (optionId === 'yes' || optionId === 'no')
+      ? `${optionId === 'yes' ? 'כן' : 'לא'} (תשובה קודמת)`
+      : '';
+    return `<li>${escapeHtml(question?.text || questionId)}: ${escapeHtml(legacyRatingAnswer || option?.label || optionId)}</li>`;
   }).join('');
 
   return `
@@ -1160,11 +1228,12 @@ function renderSubmissionCard(request, isNewSuggestion = false) {
 
 function renderQuestionEditor(question, questionIndex) {
   return `
-    <article class="admin-question-card" data-question-card>
+    <article class="admin-question-card" data-question-card data-question-index="${questionIndex}">
       <header class="editor-card-header">
         <h3>שאלה ${questionIndex + 1}</h3>
         <button class="icon-button danger-icon" type="button" data-action="remove-question" data-question-index="${questionIndex}" aria-label="הסר שאלה" title="הסר שאלה"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M5 7l1 13h12l1-13M9 7V4h6v3" /></svg></button>
       </header>
+      <p class="muted-note">${question.type === 'rating' ? 'שאלת דירוג · סולם 1–4' : 'שאלת כן/לא'}</p>
       <div class="editor-fields">
         <label>מזהה שאלה
           <input data-question-field="id" value="${escapeHtml(question.id)}" required />
@@ -1291,11 +1360,14 @@ function validateYeshivot(yeshivot) {
 function readQuestionsFromEditor() {
   return [...root.querySelectorAll('[data-question-card]')].map((card) => {
     const id = card.querySelector('[data-question-field="id"]').value.trim();
-    const existingQuestion = appData.questions.find((question) => question.id === id);
-    const bundledQuestion = bundledContent.questions.find((question) => question.id === id);
+    const originalQuestionIndex = Number(card.dataset.questionIndex);
+    const existingQuestion = appData.questions[originalQuestionIndex] || appData.questions.find((question) => question.id === id);
+    const bundledQuestion = bundledContent.questions.find((question) => question.id === existingQuestion?.id)
+      || bundledContent.questions.find((question) => question.id === id);
     return {
       id,
       text: card.querySelector('[data-question-field="text"]').value.trim(),
+      type: existingQuestion?.type || (RATING_QUESTION_IDS.has(id) ? 'rating' : 'yes-no'),
       options: [...card.querySelectorAll('[data-option-card]')].map((optionCard) => {
         const optionId = optionCard.querySelector('[data-option-field="id"]').value.trim();
         const tags = [...optionCard.querySelectorAll('[data-option-field="tags"]:checked')].map((input) => input.value);
@@ -1546,6 +1618,10 @@ function validateQuestions(questions) {
     return ids.some((id) => !id) || new Set(ids).size !== ids.length || question.options.some((option) => !option.label);
   })) {
     throw new Error('אפשרויות בכל שאלה צריכות מזהים ייחודיים ונוסח.');
+  }
+  if (questions.some((question) => question.type === 'rating'
+    && (question.options.length !== 4 || [1, 2, 3, 4].some((value) => !question.options.some((option) => option.id === String(value)))))) {
+    throw new Error('בשאלת דירוג נדרשות בדיוק ארבע אפשרויות עם המזהים 1–4.');
   }
 }
 
@@ -1880,8 +1956,45 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
 }
 
 function renderQuestionnaire() {
-  const currentQuestion = appData.questions[state.currentIndex];
-  root.innerHTML = buildQuestionMarkup(currentQuestion, state.currentIndex);
+  const questions = getOrderedQuestions();
+  const firstPartCount = questions.filter((question) => question.type !== 'rating').length;
+  const ratingStartIndex = firstPartCount;
+
+  if (state.ratingTransition) {
+    root.innerHTML = `
+      <section class="rating-transition-panel" aria-labelledby="rating-transition-title">
+        <div class="rating-transition-art" aria-hidden="true">
+          <span class="rating-spark spark-one">✦</span>
+          <span class="rating-spark spark-two">✧</span>
+          <svg class="rating-ruler" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <path d="M12 18a4 4 0 0 1 4-4h32a4 4 0 0 1 4 4v12H12V18Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="3" />
+            <path d="M20 15v9m8-9v5m8-5v9m8-9v5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+            <path d="m16 42 5-5m0 0 5 5m-5-5v13m8-9h9m-9 5h6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="rating-spark spark-three">✦</span>
+        </div>
+        <h2 id="rating-transition-title">שאלות דירוג</h2>
+        <p>עכשיו עוברים לשאלות דירוג. בחרו עד כמה אתם מסכימים עם כל משפט, בסולם של 1 עד 4.</p>
+      </section>
+    `;
+    window.clearTimeout(state.ratingTransitionTimeout);
+    state.ratingTransitionTimeout = window.setTimeout(() => {
+      if (!state.ratingTransition || window.location.hash === '#admin-secret') return;
+      state.ratingTransition = false;
+      state.currentIndex = ratingStartIndex;
+      render();
+    }, 1700);
+    return;
+  }
+
+  const currentQuestion = questions[state.currentIndex];
+  if (!currentQuestion) {
+    state.completed = true;
+    void recordCompletionAnalytics();
+    renderResults();
+    return;
+  }
+  root.innerHTML = buildQuestionMarkup(currentQuestion, state.currentIndex, questions);
 
   const prevButton = document.getElementById('prev-button');
   const nextButton = document.getElementById('next-button');
@@ -1892,20 +2005,15 @@ function renderQuestionnaire() {
       const { questionId, optionId } = button.dataset;
       state.answers[questionId] = optionId;
 
-      if (state.currentIndex === appData.questions.length - 1) {
-        state.completed = true;
-        void recordCompletionAnalytics();
-        renderResults();
-        return;
-      }
-
-      state.currentIndex += 1;
-      render();
+      advanceQuestion(questions, firstPartCount);
     });
   });
 
   prevButton.addEventListener('click', () => {
-    if (state.currentIndex > 0) {
+    if (state.currentIndex === ratingStartIndex && firstPartCount > 0) {
+      state.currentIndex -= 1;
+      render();
+    } else if (state.currentIndex > 0) {
       state.currentIndex -= 1;
       render();
     }
@@ -1916,16 +2024,24 @@ function renderQuestionnaire() {
       return;
     }
 
-    if (state.currentIndex === appData.questions.length - 1) {
-      state.completed = true;
-      void recordCompletionAnalytics();
-      renderResults();
-      return;
-    }
-
-    state.currentIndex += 1;
-    render();
+    advanceQuestion(questions, firstPartCount);
   });
+}
+
+function advanceQuestion(questions, firstPartCount) {
+  if (state.currentIndex === firstPartCount - 1 && firstPartCount < questions.length) {
+    state.ratingTransition = true;
+    render();
+    return;
+  }
+  if (state.currentIndex === questions.length - 1) {
+    state.completed = true;
+    void recordCompletionAnalytics();
+    renderResults();
+    return;
+  }
+  state.currentIndex += 1;
+  render();
 }
 
 function render() {
@@ -2013,7 +2129,7 @@ async function initializeApp() {
         filter: 'id=eq.main'
       }, (payload) => {
         if (!payload.new?.questions || !payload.new?.yeshivot) return;
-        appData.questions = payload.new.questions;
+        appData.questions = normalizeQuestions(payload.new.questions);
         appData.yeshivot = stripShortYeshivaDescriptions(payload.new.yeshivot);
         if (Array.isArray(payload.new.parameters)) initializeParameters(payload.new.parameters);
         if (window.location.hash !== '#admin-secret') render();
