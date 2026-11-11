@@ -807,8 +807,8 @@ window.APP_DATA = {
     },
     {
       id: 'yeshiva_40',
-      name: 'מעלה גבלוע',
-      shortName: 'מעלה גבלוע',
+      name: 'מעלה גלבוע',
+      shortName: 'מעלה גלבוע',
       area: 'צפון',
       areaGroup: 'צפון',
       description: '',
