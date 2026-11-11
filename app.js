@@ -1964,14 +1964,10 @@ function renderQuestionnaire() {
     root.innerHTML = `
       <section class="rating-transition-panel" aria-labelledby="rating-transition-title">
         <div class="rating-transition-art" aria-hidden="true">
-          <span class="rating-spark spark-one">✦</span>
-          <span class="rating-spark spark-two">✧</span>
           <svg class="rating-ruler" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <path d="M12 18a4 4 0 0 1 4-4h32a4 4 0 0 1 4 4v12H12V18Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="3" />
-            <path d="M20 15v9m8-9v5m8-5v9m8-9v5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-            <path d="m16 42 5-5m0 0 5 5m-5-5v13m8-9h9m-9 5h6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            <rect x="5" y="21" width="54" height="22" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="3" />
+            <path d="M14 22v8m9-8v5m9-5v8m9-8v5m9-5v8" stroke="currentColor" stroke-width="2.5" />
           </svg>
-          <span class="rating-spark spark-three">✦</span>
         </div>
         <h2 id="rating-transition-title">שאלות דירוג</h2>
         <p>עכשיו עוברים לשאלות דירוג. בחרו עד כמה אתם מסכימים עם כל משפט, בסולם של 1 עד 4.</p>
