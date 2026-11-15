@@ -179,7 +179,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 6,
         personal_attention: 5,
-        physical_conditions: 5
+        physical_conditions: 5,
+        intanse_study: 6,
+        rambamizem: 1
       }
     },
     {
@@ -196,7 +198,9 @@ window.APP_DATA = {
         conservatism_authority: 4,
         classic_study: 5,
         personal_attention: 6,
-        physical_conditions: 3
+        physical_conditions: 3,
+        intanse_study: 6,
+        rambamizem: 2
       }
     },
     {
@@ -213,7 +217,9 @@ window.APP_DATA = {
         conservatism_authority: 8,
         classic_study: 8,
         personal_attention: 5,
-        physical_conditions: 5
+        physical_conditions: 5,
+        intanse_study: 7,
+        rambamizem: 4
       }
     },
     {
@@ -230,7 +236,9 @@ window.APP_DATA = {
         conservatism_authority: 8,
         classic_study: 8,
         personal_attention: 7,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 7,
+        rambamizem: 4
       }
     },
     {
@@ -247,7 +255,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 8,
         personal_attention: 5,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 8,
+        rambamizem: 4
       }
     },
     {
@@ -264,7 +274,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 8,
         personal_attention: 4,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 9,
+        rambamizem: 4
       }
     },
     {
@@ -281,7 +293,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 6,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 3,
+        rambamizem: 4
       }
     },
     {
@@ -298,7 +312,9 @@ window.APP_DATA = {
         conservatism_authority: 6,
         classic_study: 9,
         personal_attention: 6,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 6,
+        rambamizem: 4
       }
     },
     {
@@ -315,7 +331,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 9,
         personal_attention: 6,
-        physical_conditions: 4
+        physical_conditions: 4,
+        intanse_study: 10,
+        rambamizem: 1
       }
     },
     {
@@ -332,7 +350,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 6,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 7,
+        rambamizem: 1
       }
     },
     {
@@ -349,7 +369,9 @@ window.APP_DATA = {
         conservatism_authority: 6,
         classic_study: 8,
         personal_attention: 7,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 5,
+        rambamizem: 4
       }
     },
     {
@@ -366,7 +388,9 @@ window.APP_DATA = {
         conservatism_authority: 6,
         classic_study: 7,
         personal_attention: 8,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 4,
+        rambamizem: 4
       }
     },
     {
@@ -383,7 +407,9 @@ window.APP_DATA = {
         conservatism_authority: 4,
         classic_study: 5,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 4,
+        rambamizem: 2
       }
     },
     {
@@ -400,7 +426,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 9,
         personal_attention: 8,
-        physical_conditions: 10
+        physical_conditions: 10,
+        intanse_study: 5,
+        rambamizem: 4
       }
     },
     {
@@ -417,7 +445,9 @@ window.APP_DATA = {
         conservatism_authority: 8,
         classic_study: 8,
         personal_attention: 6,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 6,
+        rambamizem: 4
       }
     },
     {
@@ -434,7 +464,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 8,
         personal_attention: 9,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 4,
+        rambamizem: 4
       }
     },
     {
@@ -451,7 +483,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 9,
         personal_attention: 7,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 8,
+        rambamizem: 1
       }
     },
     {
@@ -468,7 +502,9 @@ window.APP_DATA = {
         conservatism_authority: 8,
         classic_study: 10,
         personal_attention: 6,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 7,
+        rambamizem: 4
       }
     },
     {
@@ -485,7 +521,9 @@ window.APP_DATA = {
         conservatism_authority: 6,
         classic_study: 5,
         personal_attention: 9,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 2,
+        rambamizem: 4
       }
     },
     {
@@ -502,7 +540,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 6,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 5,
+        rambamizem: 2
       }
     },
     {
@@ -519,7 +559,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 8,
         personal_attention: 7,
-        physical_conditions: 9
+        physical_conditions: 9,
+        intanse_study: 6,
+        rambamizem: 4
       }
     },
     {
@@ -536,7 +578,9 @@ window.APP_DATA = {
         conservatism_authority: 10,
         classic_study: 9,
         personal_attention: 2,
-        physical_conditions: 2
+        physical_conditions: 2,
+        intanse_study: 10,
+        rambamizem: 4
       }
     },
     {
@@ -553,7 +597,9 @@ window.APP_DATA = {
         conservatism_authority: 4,
         classic_study: 10,
         personal_attention: 7,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 10,
+        rambamizem: 1
       }
     },
     {
@@ -570,7 +616,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 8,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 6,
+        rambamizem: 4
       }
     },
     {
@@ -587,7 +635,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 10,
         personal_attention: 6,
-        physical_conditions: 9
+        physical_conditions: 9,
+        intanse_study: 8,
+        rambamizem: 4
       }
     },
     {
@@ -604,7 +654,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 9,
         personal_attention: 5,
-        physical_conditions: 5
+        physical_conditions: 5,
+        intanse_study: 9,
+        rambamizem: 4
       }
     },
     {
@@ -621,7 +673,9 @@ window.APP_DATA = {
         conservatism_authority: 3,
         classic_study: 2,
         personal_attention: 8,
-        physical_conditions: 9
+        physical_conditions: 9,
+        intanse_study: 6,
+        rambamizem: 3
       }
     },
     {
@@ -638,7 +692,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 8,
         personal_attention: 6,
-        physical_conditions: 4
+        physical_conditions: 4,
+        intanse_study: 7,
+        rambamizem: 4
       }
     },
     {
@@ -655,7 +711,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 8,
         personal_attention: 10,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 6,
+        rambamizem: 4
       }
     },
     {
@@ -672,7 +730,9 @@ window.APP_DATA = {
         conservatism_authority: 10,
         classic_study: 10,
         personal_attention: 2,
-        physical_conditions: 4
+        physical_conditions: 4,
+        intanse_study: 10,
+        rambamizem: 4
       }
     },
     {
@@ -689,7 +749,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 6,
         personal_attention: 8,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 5,
+        rambamizem: 2
       }
     },
     {
@@ -706,7 +768,9 @@ window.APP_DATA = {
         conservatism_authority: 6,
         classic_study: 7,
         personal_attention: 7,
-        physical_conditions: 5
+        physical_conditions: 5,
+        intanse_study: 5,
+        rambamizem: 4
       }
     },
     {
@@ -723,7 +787,9 @@ window.APP_DATA = {
         conservatism_authority: 4,
         classic_study: 6,
         personal_attention: 4,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 7,
+        rambamizem: 2
       }
     },
     {
@@ -740,7 +806,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 8,
         personal_attention: 6,
-        physical_conditions: 5
+        physical_conditions: 5,
+        intanse_study: 8,
+        rambamizem: 4
       }
     },
     {
@@ -757,7 +825,9 @@ window.APP_DATA = {
         conservatism_authority: 7,
         classic_study: 6,
         personal_attention: 9,
-        physical_conditions: 6
+        physical_conditions: 6,
+        intanse_study: 5,
+        rambamizem: 2
       }
     },
     {
@@ -774,7 +844,9 @@ window.APP_DATA = {
         conservatism_authority: 9,
         classic_study: 9,
         personal_attention: 4,
-        physical_conditions: 8
+        physical_conditions: 8,
+        intanse_study: 8,
+        rambamizem: 4
       }
     },
     {
@@ -791,7 +863,9 @@ window.APP_DATA = {
         conservatism_authority: 3,
         classic_study: 3,
         personal_attention: 8,
-        physical_conditions: 3
+        physical_conditions: 3,
+        intanse_study: 5,
+        rambamizem: 3
       }
     },
     {
@@ -808,7 +882,9 @@ window.APP_DATA = {
         conservatism_authority: 4,
         classic_study: 3,
         personal_attention: 8,
-        physical_conditions: 4
+        physical_conditions: 4,
+        intanse_study: 4,
+        rambamizem: 2
       }
     },
     {
@@ -825,7 +901,9 @@ window.APP_DATA = {
         conservatism_authority: 5,
         classic_study: 4,
         personal_attention: 8,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 4,
+        rambamizem: 2
       }
     },
     {
@@ -842,29 +920,11 @@ window.APP_DATA = {
         conservatism_authority: 2,
         classic_study: 3,
         personal_attention: 6,
-        physical_conditions: 7
+        physical_conditions: 7,
+        intanse_study: 5,
+        rambamizem: 3
       }
     }
   ]
 };
 
-const STUDY_PROFILES = {
-  yeshiva_1: [6, 1], yeshiva_2: [6, 2], yeshiva_3: [7, 4], yeshiva_4: [7, 4],
-  yeshiva_5: [8, 4], yeshiva_6: [9, 4], yeshiva_7: [3, 4], yeshiva_8: [6, 4],
-  yeshiva_9: [10, 1], yeshiva_10: [7, 1], yeshiva_11: [5, 4], yeshiva_12: [4, 4],
-  yeshiva_13: [4, 2], yeshiva_14: [5, 4], yeshiva_15: [6, 4], yeshiva_16: [4, 4],
-  yeshiva_17: [8, 1], yeshiva_18: [7, 4], yeshiva_19: [2, 4], yeshiva_20: [5, 2],
-  yeshiva_21: [6, 4], yeshiva_22: [10, 4], yeshiva_23: [10, 1], yeshiva_24: [6, 4],
-  yeshiva_25: [8, 4], yeshiva_26: [9, 4], machanim: [6, 3], yeshiva_28: [7, 4],
-  yeshiva_29: [6, 4], yeshiva_30: [10, 4], yeshiva_31: [5, 2], yeshiva_32: [5, 4],
-  yeshiva_33: [7, 2], yeshiva_34: [8, 4], yeshiva_35: [5, 2], yeshiva_36: [8, 4],
-  yeshiva_37: [5, 3], yeshiva_38: [4, 2], yeshiva_39: [4, 2], yeshiva_40: [5, 3]
-};
-
-window.APP_DATA.yeshivot.forEach((yeshiva) => {
-  const profile = STUDY_PROFILES[yeshiva.id];
-  if (profile) {
-    yeshiva.profileTags.intanse_study = profile[0];
-    yeshiva.profileTags.rambamizem = profile[1];
-  }
-});
