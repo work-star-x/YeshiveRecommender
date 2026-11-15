@@ -557,7 +557,9 @@ function computeScores(limit = 3) {
           throw new Error(`ערך לא תקין לפרמטר ${parameter.id} בישיבה ${yeshiva.name}`);
         }
         const distance = parameter.id === 'rambamizem'
-          ? Number(userValue !== yeshivaValue)
+          ? (yeshivaValue === 3 && (userValue === 1 || userValue === 2)
+            ? 1 / 3
+            : Number(userValue !== yeshivaValue))
           : Math.abs(Number(userValue ?? 5) - yeshivaValue) / 9;
         weightedDistance += weight * distance;
         totalWeight += weight;
