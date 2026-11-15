@@ -12,7 +12,7 @@ window.APP_DATA = {
     { id: 'personal_attention', label: 'יחס אישי', description: '(גבוה - יחס אישי גבוה וישיבה קטנה)' },
     { id: 'physical_conditions', label: 'ת"ש', description: '(גבוה - תנאים טובים)' },
     { id: 'rambamizem', label: 'רמבמיסטית / חסידית', description: 'סגנון הישיבה', weight: 4 },
-    { id: 'intanse_study', label: 'סגנון למידה', description: '1 - לוז חופשי; 10 - אינטנסיבי וממוקד הישגים', weight: 1 }
+    { id: 'intanse_study', label: 'סגנון למידה', description: 'לוז חופשי;אינטנסיבי וממוקד הישגים', weight: 1 }
   ],
   questions: [
     {
