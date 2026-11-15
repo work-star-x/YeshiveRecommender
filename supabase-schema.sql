@@ -213,6 +213,10 @@ begin
       for parameter_item in select value from jsonb_array_elements(site_parameters)
       loop
         profile_parameter_id := parameter_item->>'id';
+        if profile_parameter_id = 'rambamizem' and p_profile ? profile_parameter_id
+          and p_profile->profile_parameter_id = 'null'::jsonb then
+          continue;
+        end if;
         profile_value_text := coalesce(p_profile->>profile_parameter_id, '');
         if profile_value_text !~ '^[0-9]+([.][0-9]+)?$' then
           raise exception 'Completion profile contains an invalid parameter value.';
@@ -220,6 +224,10 @@ begin
         parameter_value := profile_value_text::numeric;
         if parameter_value < 1 or parameter_value > 10 then
           raise exception 'Completion profile contains an invalid parameter value.';
+        end if;
+        if profile_parameter_id = 'rambamizem'
+          and (parameter_value > 4 or parameter_value <> trunc(parameter_value)) then
+          raise exception 'Completion profile contains an invalid category.';
         end if;
       end loop;
     end if;
@@ -293,6 +301,9 @@ begin
       for parameter_item in select value from jsonb_array_elements(site_parameters)
       loop
         profile_parameter_id := parameter_item->>'id';
+        if profile_parameter_id = 'rambamizem' or p_profile->profile_parameter_id = 'null'::jsonb then
+          continue;
+        end if;
         parameter_value := (p_profile->>profile_parameter_id)::numeric;
         parameter_bucket := round(parameter_value)::smallint;
 

@@ -227,6 +227,40 @@ h1 {
   font-size: 1.2rem;
 }
 
+.option-grid.category-option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  direction: rtl;
+}
+
+.study-slider {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 32rem);
+  margin-inline: auto;
+  direction: ltr;
+}
+
+.study-slider input {
+  width: 100%;
+  accent-color: var(--brand);
+}
+
+.study-slider output {
+  text-align: center;
+  color: var(--brand-dark);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.parameter-weight-field select {
+  max-width: 10rem;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #f8fbff;
+}
+
 .rating-transition-panel {
   min-height: 410px;
   display: flex;

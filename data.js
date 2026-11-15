@@ -10,7 +10,9 @@ window.APP_DATA = {
     { id: 'conservatism_authority', label: 'שמרנות', description: '(גבוה - שמרני)' },
     { id: 'classic_study', label: 'אופי הלימוד', description: '(גבוה - שיטת לימוד קלאסית)' },
     { id: 'personal_attention', label: 'יחס אישי', description: '(גבוה - יחס אישי גבוה וישיבה קטנה)' },
-    { id: 'physical_conditions', label: 'ת"ש', description: '(גבוה - תנאים טובים)' }
+    { id: 'physical_conditions', label: 'ת"ש', description: '(גבוה - תנאים טובים)' },
+    { id: 'rambamizem', label: 'רמבמיסטית / חסידית', description: 'סגנון הישיבה', weight: 4 },
+    { id: 'intanse_study', label: 'סגנון למידה', description: '1 - אינטנסיבי וממוקד הישגים; 10 - לוז חופשי', weight: 1 }
   ],
   questions: [
     {
@@ -74,10 +76,10 @@ window.APP_DATA = {
     },
     {
       id: 'q8',
-      text: 'חשוב לי ללמוד בגמרא באופן שגם נוגע בחיים שלי.',
+      text: 'אני מעדיף לצלול לעומק הפלפול התלמודי ולא לחפש כל הזמן איך הסוגיה נוגעת בחיים האישיים שלי',
       options: [
-        { id: 'yes', label: 'כן', tags: ['classic_study', 'social_engagement'], weights: { classic_study: -3, social_engagement: 1 } },
-        { id: 'no', label: 'לא', tags: ['classic_study', 'social_engagement'], weights: { classic_study: 3, social_engagement: -1 } }
+        { id: 'yes', label: 'כן', tags: ['classic_study', 'social_engagement'], weights: { classic_study: 3, social_engagement: -1 } },
+        { id: 'no', label: 'לא', tags: ['classic_study', 'social_engagement'], weights: { classic_study: -3, social_engagement: 1 } }
       ]
     },
     {
@@ -139,6 +141,27 @@ window.APP_DATA = {
         { id: 'yes', label: 'כן', tags: ['conservatism_authority', 'classic_study'], weights: { conservatism_authority: 3, classic_study: 1 } },
         { id: 'no', label: 'לא', tags: ['conservatism_authority', 'classic_study'], weights: { conservatism_authority: -3, classic_study: -1 } }
       ]
+    },
+    {
+      id: 'q16',
+      type: 'category',
+      text: 'אני מחפש ישיבה:',
+      options: [
+        { id: '1', label: 'רמבמיסטית', tags: [] },
+        { id: '2', label: 'חסידית', tags: [] },
+        { id: '3', label: 'גם וגם', tags: [] },
+        { id: '4', label: 'לא ולא', tags: [] },
+        { id: 'unknown', label: 'לא יודע', tags: [] }
+      ]
+    },
+    {
+      id: 'q17',
+      type: 'slider',
+      text: 'איזה סגנון למידה הכי מתאים לך?',
+      options: Array.from({ length: 10 }, (_, index) => ({
+        id: String(index + 1), label: String(index + 1), tags: ['intanse_study'],
+        weights: { intanse_study: index + 1 }
+      }))
     }
   ],
   yeshivot: [
@@ -824,3 +847,24 @@ window.APP_DATA = {
     }
   ]
 };
+
+const STUDY_PROFILES = {
+  yeshiva_1: [6, 1], yeshiva_2: [6, 2], yeshiva_3: [7, 4], yeshiva_4: [7, 4],
+  yeshiva_5: [8, 4], yeshiva_6: [9, 4], yeshiva_7: [3, 4], yeshiva_8: [6, 4],
+  yeshiva_9: [10, 1], yeshiva_10: [7, 1], yeshiva_11: [5, 4], yeshiva_12: [4, 4],
+  yeshiva_13: [4, 2], yeshiva_14: [5, 4], yeshiva_15: [6, 4], yeshiva_16: [4, 4],
+  yeshiva_17: [8, 1], yeshiva_18: [7, 4], yeshiva_19: [2, 4], yeshiva_20: [5, 2],
+  yeshiva_21: [6, 4], yeshiva_22: [10, 4], yeshiva_23: [10, 1], yeshiva_24: [6, 4],
+  yeshiva_25: [8, 4], yeshiva_26: [9, 4], machanim: [6, 3], yeshiva_28: [7, 4],
+  yeshiva_29: [6, 4], yeshiva_30: [10, 4], yeshiva_31: [5, 2], yeshiva_32: [5, 4],
+  yeshiva_33: [7, 2], yeshiva_34: [8, 4], yeshiva_35: [5, 2], yeshiva_36: [8, 4],
+  yeshiva_37: [5, 3], yeshiva_38: [4, 2], yeshiva_39: [4, 2], yeshiva_40: [5, 3]
+};
+
+window.APP_DATA.yeshivot.forEach((yeshiva) => {
+  const profile = STUDY_PROFILES[yeshiva.id];
+  if (profile) {
+    yeshiva.profileTags.intanse_study = profile[0];
+    yeshiva.profileTags.rambamizem = profile[1];
+  }
+});

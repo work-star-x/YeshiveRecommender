@@ -4,6 +4,7 @@ function stripShortYeshivaDescriptions(yeshivot) {
 
 const appData = window.APP_DATA;
 const RATING_QUESTION_IDS = new Set(['q4', 'q6', 'q7', 'q10', 'q12', 'q14', 'q15']);
+const RAMBAM_LABELS = { 1: 'רמבמיסטית', 2: 'חסידית', 3: 'גם וגם', 4: 'לא ולא' };
 
 function normalizeQuestions(questions) {
   return questions.map((question) => {
@@ -178,7 +179,8 @@ function initializeParameters(parameters = appData.parameters) {
     ? parameters.filter((parameter) => parameter?.id).map((parameter) => ({
       id: String(parameter.id),
       label: String(parameter.label || TAG_LABELS[parameter.id] || formatTagLabel(parameter.id)),
-      description: String(parameter.description || '')
+      description: String(parameter.description || ''),
+      weight: parameter.weight === undefined ? (parameter.id === 'rambamizem' ? 4 : 1) : Number(parameter.weight)
     }))
     : [];
   const existingIds = new Set(normalized.map((parameter) => parameter.id));
@@ -186,7 +188,8 @@ function initializeParameters(parameters = appData.parameters) {
     if (!existingIds.has(id)) normalized.push({
       id,
       label: TAG_LABELS[id] || id.replace(/_/g, ' '),
-      description: ''
+      description: '',
+      weight: id === 'rambamizem' ? 4 : 1
     });
   });
   appData.parameters = normalized.sort((left, right) => left.label.localeCompare(right.label, 'he'));
@@ -379,8 +382,9 @@ function renderWelcome() {
 
 function getOrderedQuestions() {
   return [
-    ...appData.questions.filter((question) => question.type !== 'rating'),
-    ...appData.questions.filter((question) => question.type === 'rating')
+    ...appData.questions.filter((question) => !['rating', 'category', 'slider'].includes(question.type)),
+    ...appData.questions.filter((question) => question.type === 'rating'),
+    ...appData.questions.filter((question) => ['category', 'slider'].includes(question.type))
   ];
 }
 
@@ -411,7 +415,13 @@ function buildQuestionMarkup(question, index, allQuestions) {
         </div>
       ` : ''}
 
-      <div class="option-grid ${isRating ? 'rating-option-grid' : ''}" role="list">
+      ${question.type === 'slider' ? `
+        <div class="study-slider">
+          <div class="rating-scale-helper"><span>אינטנסיבי וממוקד הישגים</span><span>לוז חופשי</span></div>
+          <input id="study-slider" type="range" min="1" max="10" step="1" value="${escapeHtml(selectedOptionId || '5')}" aria-label="סגנון למידה מ-1 עד 10" />
+          <output id="study-slider-value" for="study-slider">${escapeHtml(selectedOptionId || '5')}</output>
+        </div>
+      ` : `<div class="option-grid ${isRating ? 'rating-option-grid' : ''} ${question.type === 'category' ? 'category-option-grid' : ''}" role="list">
         ${options
           .map(
             (option) => `
@@ -428,7 +438,7 @@ function buildQuestionMarkup(question, index, allQuestions) {
             `
           )
           .join('')}
-      </div>
+      </div>`}
 
       <div class="controls">
         <button class="nav-button secondary" type="button" id="prev-button" aria-label="חזרה לשאלה הקודמת" title="חזרה" ${index === 0 ? 'disabled' : ''}>
@@ -436,7 +446,7 @@ function buildQuestionMarkup(question, index, allQuestions) {
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
-        <button class="nav-button primary" type="button" id="next-button" aria-label="לשאלה הבאה" title="הבא" ${!selectedOptionId ? 'disabled' : ''}>
+        <button class="nav-button primary" type="button" id="next-button" aria-label="לשאלה הבאה" title="הבא" ${!selectedOptionId && question.type !== 'slider' ? 'disabled' : ''}>
           <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -503,6 +513,10 @@ function buildUserProfile() {
 
   return Object.fromEntries(
     parameterIds.map((parameterId) => {
+      if (parameterId === 'rambamizem') {
+        const answer = state.answers.q16;
+        return [parameterId, Object.hasOwn(RAMBAM_LABELS, answer) ? Number(answer) : null];
+      }
       const raw = Number(rawScores[parameterId] || 0);
       const { min, max } = parameterBounds[parameterId];
       const normalized = max > min ? 1 + ((raw - min) / (max - min)) * 9 : 5;
@@ -525,14 +539,28 @@ function computeScores(limit = 3) {
     .filter((yeshiva) => state.preferredAreaGroups.length === 0
       || state.preferredAreaGroups.includes(yeshiva.areaGroup))
     .map((yeshiva) => {
-      const parameterValues = appData.parameters.map((parameter) => {
-        const userValue = Number(userProfile[parameter.id] || 5);
-        const yeshivaValue = Number(yeshiva.profileTags?.[parameter.id] || 5);
-        return Math.abs(userValue - yeshivaValue);
+      let weightedDistance = 0;
+      let totalWeight = 0;
+      appData.parameters.forEach((parameter) => {
+        const weight = Number(parameter.weight);
+        if (!Number.isFinite(weight) || weight < 0) throw new Error(`משקל לא תקין לפרמטר ${parameter.id}`);
+        const userValue = userProfile[parameter.id];
+        const profileValue = yeshiva.profileTags?.[parameter.id];
+        if ((parameter.id === 'rambamizem' || parameter.id === 'intanse_study')
+          && (userValue == null || profileValue == null)) return;
+        const yeshivaValue = Number(profileValue ?? 5);
+        if (!Number.isFinite(yeshivaValue) || yeshivaValue < 1 || yeshivaValue > (parameter.id === 'rambamizem' ? 4 : 10)
+          || (['rambamizem', 'intanse_study'].includes(parameter.id) && !Number.isInteger(yeshivaValue))) {
+          throw new Error(`ערך לא תקין לפרמטר ${parameter.id} בישיבה ${yeshiva.name}`);
+        }
+        const distance = parameter.id === 'rambamizem'
+          ? Number(userValue !== yeshivaValue)
+          : Math.abs(Number(userValue ?? 5) - yeshivaValue) / 9;
+        weightedDistance += weight * distance;
+        totalWeight += weight;
       });
-
-      const averageDeviation = parameterValues.reduce((sum, value) => sum + value, 0) / Math.max(1, parameterValues.length);
-      const baseScore = clamp((1 - (averageDeviation / 9)) * 100, 0, 100);
+      if (!totalWeight) throw new Error(`אין פרמטרים פעילים לחישוב התאמה עבור ${yeshiva.name}`);
+      const baseScore = clamp((1 - weightedDistance / totalWeight) * 100, 0, 100);
       const receivesMahanayimBonus = yeshiva.id === 'machanim'
         && userProfile.cultural_openness >= MAHANAYIM_THRESHOLDS.cultural_openness
         && userProfile.conservatism_authority <= MAHANAYIM_THRESHOLDS.conservatism_authority
@@ -989,11 +1017,14 @@ function deriveSubmissionTagWeights(requests) {
     let answeredQuestions = 0;
 
     appData.questions.forEach((question) => {
+      if (question.id === 'q16' || question.id === 'q17') return;
       const selectedOption = getQuestionOption(question, request.answers?.[question.id]);
       if (!selectedOption) return;
 
       answeredQuestions += 1;
-      new Set(selectedOption.tags).forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1));
+      new Set(selectedOption.tags).forEach((tag) => {
+        if (tag !== 'intanse_study' && tag !== 'rambamizem') tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
     });
 
     const weights = new Map();
@@ -1064,7 +1095,7 @@ function createYeshivaFromRequest(request, profileTags) {
     area: 'מיקום לא צוין',
     areaGroup: '',
     description: request.details || 'ישיבה שהוצעה על ידי משתמשים.',
-    profileTags: Object.fromEntries(appData.parameters.map((parameter) => [
+    profileTags: Object.fromEntries(appData.parameters.filter((parameter) => !['rambamizem', 'intanse_study'].includes(parameter.id)).map((parameter) => [
       parameter.id,
       clamp(Number(profileTags[parameter.id] || 5), 1, 10)
     ]))
@@ -1233,7 +1264,7 @@ function renderQuestionEditor(question, questionIndex) {
         <h3>שאלה ${questionIndex + 1}</h3>
         <button class="icon-button danger-icon" type="button" data-action="remove-question" data-question-index="${questionIndex}" aria-label="הסר שאלה" title="הסר שאלה"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M5 7l1 13h12l1-13M9 7V4h6v3" /></svg></button>
       </header>
-      <p class="muted-note">${question.type === 'rating' ? 'שאלת דירוג · סולם 1–4' : 'שאלת כן/לא'}</p>
+      <p class="muted-note">${{ rating: 'שאלת דירוג · סולם 1–4', category: 'בחירה יחידה', slider: 'סולם 1–10' }[question.type] || 'שאלת כן/לא'}</p>
       <div class="editor-fields">
         <label>מזהה שאלה
           <input data-question-field="id" value="${escapeHtml(question.id)}" required />
@@ -1288,7 +1319,15 @@ function renderYeshivaEditor(yeshiva, index) {
         </div>
         <div class="weight-list">
           ${appData.parameters.map(({ id: tag, label, description }) => {
-            const weight = Number(yeshiva.profileTags?.[tag] ?? 5);
+            const isSpecial = tag === 'rambamizem' || tag === 'intanse_study';
+            const weight = yeshiva.profileTags?.[tag] ?? (isSpecial ? '' : 5);
+            if (tag === 'rambamizem') return `
+              <div class="weight-row" data-weight-row data-parameter-id="${escapeHtml(tag)}">
+                <div class="parameter-name-wrap"><span class="parameter-name">${escapeHtml(label)}</span><span class="parameter-subtext">${escapeHtml(description || '')}</span></div>
+                <label class="parameter-weight-field"><span class="sr-only">${escapeHtml(label)}</span>
+                  <select data-weight-field="weight"><option value="">לא ידוע</option>${Object.entries(RAMBAM_LABELS).map(([value, name]) => `<option value="${value}" ${String(weight) === value ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('')}</select>
+                </label>
+              </div>`;
             const suggestion = suggestionsByTag.get(tag);
             const suggestionDelta = suggestion?.averageDelta || 0;
             const deltaClass = suggestionDelta > 0 ? 'positive' : suggestionDelta < 0 ? 'negative' : 'neutral';
@@ -1306,7 +1345,7 @@ function renderYeshivaEditor(yeshiva, index) {
               </div>
               <label class="parameter-weight-field">
                 <span class="sr-only">משקל ${escapeHtml(label)}</span>
-                <input class="parameter-weight" data-weight-field="weight" type="number" min="1" max="10" step="0.1" value="${Number(weight).toFixed(1)}" required />
+                <input class="parameter-weight" data-weight-field="weight" type="number" min="1" max="10" step="${isSpecial ? '1' : '0.1'}" value="${weight === '' ? '' : Number(weight).toFixed(isSpecial ? 0 : 1)}" ${isSpecial ? 'placeholder="לא ידוע"' : 'required'} />
               </label>
               ${suggestionControl}
             </div>
@@ -1361,7 +1400,7 @@ function readQuestionsFromEditor() {
   return [...root.querySelectorAll('[data-question-card]')].map((card) => {
     const id = card.querySelector('[data-question-field="id"]').value.trim();
     const originalQuestionIndex = Number(card.dataset.questionIndex);
-    const existingQuestion = appData.questions[originalQuestionIndex] || appData.questions.find((question) => question.id === id);
+    const existingQuestion = appData.questions.find((question) => question.id === id) || appData.questions[originalQuestionIndex];
     const bundledQuestion = bundledContent.questions.find((question) => question.id === existingQuestion?.id)
       || bundledContent.questions.find((question) => question.id === id);
     return {
@@ -1394,9 +1433,9 @@ function readYeshivotFromEditor() {
   return [...root.querySelectorAll('[data-yeshiva-editor]')].map((editor) => {
     const profileTags = {};
     editor.querySelectorAll('[data-weight-row]').forEach((row) => {
-      const rawValue = Number(row.querySelector('[data-weight-field="weight"]').value);
-      const clampedValue = Number(Math.min(10, Math.max(1, Number.isFinite(rawValue) ? rawValue : 5)).toFixed(1));
-      profileTags[row.dataset.parameterId] = clampedValue;
+      const value = row.querySelector('[data-weight-field="weight"]').value;
+      if (value === '' && ['rambamizem', 'intanse_study'].includes(row.dataset.parameterId)) return;
+      profileTags[row.dataset.parameterId] = Number(value);
     });
     const readField = (name) => editor.querySelector(`[data-yeshiva-field="${name}"]`).value.trim();
     return {
@@ -1423,6 +1462,9 @@ function renderParameterEditor(parameter, index) {
       <label>הסבר קטן
         <input data-parameter-field="description" value="${escapeHtml(parameter.description || '')}" />
       </label>
+      <label>משקל בהתאמה
+        <input data-parameter-field="weight" type="number" min="0" step="any" value="${escapeHtml(parameter.weight ?? 1)}" required />
+      </label>
       <button class="text-button danger-button" type="button" data-parameter-action="remove" data-parameter-index="${index}">הסר פרמטר מכל המערכת</button>
     </article>
   `;
@@ -1432,7 +1474,8 @@ function readParametersFromEditor() {
   return [...root.querySelectorAll('[data-parameter-card]')].map((card) => ({
     id: card.querySelector('[data-parameter-field="id"]').value.trim(),
     label: card.querySelector('[data-parameter-field="label"]').value.trim(),
-    description: card.querySelector('[data-parameter-field="description"]')?.value.trim() || ''
+    description: card.querySelector('[data-parameter-field="description"]')?.value.trim() || '',
+    weight: Number(card.querySelector('[data-parameter-field="weight"]').value)
   }));
 }
 
@@ -1444,6 +1487,13 @@ function validateParameters(parameters) {
   }
   if (ids.some((id) => !/^[\p{L}\p{N}_-]+$/u.test(id))) {
     throw new Error('מזהי פרמטרים יכולים להכיל אותיות, מספרים, מקף וקו תחתון בלבד.');
+  }
+  if (!ids.includes('rambamizem') || !ids.includes('intanse_study')) {
+    throw new Error('יש לשמור את הפרמטרים rambamizem ו-intanse_study לשאלות סגנון הלימוד.');
+  }
+  if (parameters.some((parameter) => !Number.isFinite(parameter.weight) || parameter.weight < 0)
+    || !parameters.some((parameter) => parameter.weight > 0 && !['rambamizem', 'intanse_study'].includes(parameter.id))) {
+    throw new Error('המשקלים חייבים להיות מספרים לא שליליים ולפחות פרמטר רגיל אחד חייב להיות חיובי.');
   }
 }
 
@@ -1468,8 +1518,9 @@ function renderStatisticsPanel() {
     Number(stats.second_place || 0),
     Number(stats.third_place || 0)
   ]));
-  const selectedParameter = appData.parameters.find((parameter) => parameter.id === state.selectedParameterId)
-    || appData.parameters[0];
+  const numericParameters = appData.parameters.filter((parameter) => parameter.id !== 'rambamizem');
+  const selectedParameter = numericParameters.find((parameter) => parameter.id === state.selectedParameterId)
+    || numericParameters[0];
   const parameterBuckets = selectedParameter ? distribution[selectedParameter.id] || {} : {};
   const parameterValues = Array.from({ length: 10 }, (_, index) => Number(parameterBuckets[index + 1] || 0));
   const parameterResponseCount = parameterValues.reduce((sum, count) => sum + count, 0);
@@ -1541,7 +1592,7 @@ function renderStatisticsPanel() {
           <label class="parameter-distribution-select">
             <span>פרמטר</span>
             <select id="parameter-distribution-select">
-              ${appData.parameters.map((parameter) => `
+              ${numericParameters.map((parameter) => `
                 <option value="${escapeHtml(parameter.id)}" ${parameter.id === selectedParameter?.id ? 'selected' : ''}>${escapeHtml(parameter.label)}</option>
               `).join('')}
             </select>
@@ -1623,6 +1674,17 @@ function validateQuestions(questions) {
     && (question.options.length !== 4 || [1, 2, 3, 4].some((value) => !question.options.some((option) => option.id === String(value)))))) {
     throw new Error('בשאלת דירוג נדרשות בדיוק ארבע אפשרויות עם המזהים 1–4.');
   }
+  const requiredFormats = [
+    { id: 'q16', type: 'category', ids: ['1', '2', '3', '4', 'unknown'] },
+    { id: 'q17', type: 'slider', ids: Array.from({ length: 10 }, (_, index) => String(index + 1)) }
+  ];
+  requiredFormats.forEach(({ id, type, ids }) => {
+    const question = questions.find((item) => item.id === id);
+    if (!question || question.type !== type || question.options.length !== ids.length
+      || ids.some((optionId) => !question.options.some((option) => option.id === optionId))) {
+      throw new Error(`יש לשמור את השאלה ${id} ואת כל אפשרויותיה.`);
+    }
+  });
 }
 
 function validateYeshivot(yeshivot) {
@@ -1631,7 +1693,9 @@ function validateYeshivot(yeshivot) {
   if (ids.some((id) => !id) || new Set(ids).size !== ids.length) {
     throw new Error('מזהי הישיבות חייבים להיות מלאים וייחודיים.');
   }
-  if (yeshivot.some((yeshiva) => !yeshiva.name || !yeshiva.area || Object.values(yeshiva.profileTags).some((weight) => !Number.isFinite(weight) || weight < 1 || weight > 10))) {
+  if (yeshivot.some((yeshiva) => !yeshiva.name || !yeshiva.area || Object.entries(yeshiva.profileTags).some(([id, value]) => !Number.isFinite(value)
+    || value < 1 || value > 10 || (id === 'rambamizem' && (!Number.isInteger(value) || value > 4))
+    || (id === 'intanse_study' && !Number.isInteger(value))))) {
     throw new Error('לכל ישיבה נדרש שם ומשקלים מספריים בין 1 ל-10.');
   }
 }
@@ -1778,7 +1842,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
           id: `yeshiva-${Date.now()}`,
           name: '', shortName: '', description: '',
           area: 'מיקום לא צוין', areaGroup: '',
-          profileTags: Object.fromEntries(appData.parameters.map((parameter) => [parameter.id, 5]))
+          profileTags: Object.fromEntries(appData.parameters.filter((parameter) => !['rambamizem', 'intanse_study'].includes(parameter.id)).map((parameter) => [parameter.id, 5]))
         });
       } else if (button.dataset.action === 'remove-yeshiva') {
         yeshivotDraft.splice(yeshivaIndex, 1);
@@ -1795,7 +1859,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
         let id = 'new_parameter';
         let suffix = 2;
         while (draft.some((parameter) => parameter.id === id)) id = `new_parameter_${suffix++}`;
-        draft.push({ id, label: 'פרמטר חדש' });
+        draft.push({ id, label: 'פרמטר חדש', weight: 1 });
         state.adminParametersDraft = draft;
         renderAdminPanel('parameters');
       } else if (action === 'remove') {
@@ -1887,7 +1951,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
       }));
       appData.yeshivot = yeshivot.map((yeshiva) => {
         const profileTags = Object.fromEntries(Object.entries(yeshiva.profileTags).filter(([tag]) => parameterIds.has(tag)));
-        addedIds.forEach((tag) => { profileTags[tag] = 5; });
+        addedIds.forEach((tag) => { if (!['rambamizem', 'intanse_study'].includes(tag)) profileTags[tag] = 5; });
         return {
           ...yeshiva,
           profileTags
@@ -1957,7 +2021,7 @@ function renderAdminPanel(activeTab = state.adminTab, message = '') {
 
 function renderQuestionnaire() {
   const questions = getOrderedQuestions();
-  const firstPartCount = questions.filter((question) => question.type !== 'rating').length;
+  const firstPartCount = questions.filter((question) => !['rating', 'category', 'slider'].includes(question.type)).length;
   const ratingStartIndex = firstPartCount;
 
   if (state.ratingTransition) {
@@ -1995,6 +2059,11 @@ function renderQuestionnaire() {
   const prevButton = document.getElementById('prev-button');
   const nextButton = document.getElementById('next-button');
   const optionButtons = root.querySelectorAll('.option-button');
+  const slider = document.getElementById('study-slider');
+  slider?.addEventListener('input', () => {
+    state.answers[currentQuestion.id] = slider.value;
+    document.getElementById('study-slider-value').value = slider.value;
+  });
 
   optionButtons.forEach((button) => {
     button.addEventListener('click', () => {
@@ -2016,6 +2085,7 @@ function renderQuestionnaire() {
   });
 
   nextButton.addEventListener('click', () => {
+    if (slider) state.answers[currentQuestion.id] = slider.value;
     if (!state.answers[currentQuestion.id]) {
       return;
     }
