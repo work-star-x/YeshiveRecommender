@@ -20,6 +20,9 @@ assert.equal(run("appData.yeshivot.filter(y => Number.isInteger(y.profileTags.ra
 assert.equal(run("getOrderedQuestions().slice(-2).map(q => q.id).join(',')"), 'q16,q17');
 assert.equal(run("appData.parameters.find(p => p.id === 'rambamizem').weight"), 4);
 assert.equal(run("appData.parameters.find(p => p.id === 'intanse_study').weight"), 1);
+assert.equal(run("appData.parameters.find(p => p.id === 'intanse_study').description"), '1 - לוז חופשי; 10 - אינטנסיבי וממוקד הישגים');
+assert.equal(run("appData.yeshivot.find(y => y.id === 'yeshiva_9').profileTags.intanse_study"), 10);
+assert.equal(run("appData.yeshivot.find(y => y.id === 'yeshiva_19').profileTags.intanse_study"), 2);
 run('validateQuestions(appData.questions); validateParameters(appData.parameters); validateYeshivot(appData.yeshivot)');
 
 run(`

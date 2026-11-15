@@ -234,15 +234,44 @@ h1 {
 
 .study-slider {
   display: grid;
-  gap: 1rem;
-  width: min(100%, 32rem);
+  gap: 1.15rem;
+  width: min(100%, 45rem);
   margin-inline: auto;
   direction: ltr;
 }
 
 .study-slider input {
+  appearance: none;
   width: 100%;
-  accent-color: var(--brand);
+  height: 10px;
+  margin: 0;
+  border-radius: 999px;
+  background: #c6d9ef;
+  cursor: pointer;
+}
+
+.study-slider input::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 2px 6px rgba(19, 52, 95, 0.3);
+}
+
+.study-slider input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 2px 6px rgba(19, 52, 95, 0.3);
+}
+
+.study-slider input:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 6px;
 }
 
 .study-slider output {

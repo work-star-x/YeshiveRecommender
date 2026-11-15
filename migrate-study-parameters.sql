@@ -70,9 +70,12 @@ begin
   end if;
 
   select coalesce(jsonb_agg(
-    case when p ? 'weight' then p
+    (case when p ? 'weight' then p
     else p || jsonb_build_object('weight', case when p->>'id' = 'rambamizem' then 4 else 1 end)
-    end order by ord
+    end) || case when p->>'id' = 'intanse_study'
+      and p->>'description' = '1 - אינטנסיבי וממוקד הישגים; 10 - לוז חופשי'
+      then jsonb_build_object('description', '1 - לוז חופשי; 10 - אינטנסיבי וממוקד הישגים')
+      else '{}'::jsonb end order by ord
   ), '[]'::jsonb) into v_parameters
   from jsonb_array_elements(content.parameters) with ordinality as items(p, ord);
 
@@ -80,7 +83,7 @@ begin
     v_parameters := v_parameters || '[{"id":"rambamizem","label":"רמבמיסטית / חסידית","description":"סגנון הישיבה","weight":4}]'::jsonb;
   end if;
   if not exists (select 1 from jsonb_array_elements(v_parameters) p where p->>'id' = 'intanse_study') then
-    v_parameters := v_parameters || '[{"id":"intanse_study","label":"סגנון למידה","description":"1 - אינטנסיבי וממוקד הישגים; 10 - לוז חופשי","weight":1}]'::jsonb;
+    v_parameters := v_parameters || '[{"id":"intanse_study","label":"סגנון למידה","description":"1 - לוז חופשי; 10 - אינטנסיבי וממוקד הישגים","weight":1}]'::jsonb;
   end if;
 
   if exists (
@@ -134,7 +137,7 @@ begin
 
   update public.site_content set questions = v_questions, parameters = v_parameters, yeshivot = v_profiles,
     updated_at = now() where id = 'main';
-end;
+end;asd
 $migration$;
 
 commit;

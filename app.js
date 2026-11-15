@@ -179,7 +179,10 @@ function initializeParameters(parameters = appData.parameters) {
     ? parameters.filter((parameter) => parameter?.id).map((parameter) => ({
       id: String(parameter.id),
       label: String(parameter.label || TAG_LABELS[parameter.id] || formatTagLabel(parameter.id)),
-      description: String(parameter.description || ''),
+      description: parameter.id === 'intanse_study'
+        && parameter.description === '1 - אינטנסיבי וממוקד הישגים; 10 - לוז חופשי'
+        ? '1 - לוז חופשי; 10 - אינטנסיבי וממוקד הישגים'
+        : String(parameter.description || ''),
       weight: parameter.weight === undefined ? (parameter.id === 'rambamizem' ? 4 : 1) : Number(parameter.weight)
     }))
     : [];
@@ -417,8 +420,8 @@ function buildQuestionMarkup(question, index, allQuestions) {
 
       ${question.type === 'slider' ? `
         <div class="study-slider">
-          <div class="rating-scale-helper"><span>אינטנסיבי וממוקד הישגים</span><span>לוז חופשי</span></div>
-          <input id="study-slider" type="range" min="1" max="10" step="1" value="${escapeHtml(selectedOptionId || '5')}" aria-label="סגנון למידה מ-1 עד 10" />
+          <div class="rating-scale-helper" id="study-slider-endpoints"><span>1 · לוז חופשי</span><span>10 · אינטנסיבי וממוקד הישגים</span></div>
+          <input id="study-slider" type="range" min="1" max="10" step="1" value="${escapeHtml(selectedOptionId || '5')}" aria-label="סגנון למידה מ-1 עד 10" aria-describedby="study-slider-endpoints" />
           <output id="study-slider-value" for="study-slider">${escapeHtml(selectedOptionId || '5')}</output>
         </div>
       ` : `<div class="option-grid ${isRating ? 'rating-option-grid' : ''} ${question.type === 'category' ? 'category-option-grid' : ''}" role="list">
