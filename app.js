@@ -420,8 +420,8 @@ function buildQuestionMarkup(question, index, allQuestions) {
 
       ${question.type === 'slider' ? `
         <div class="study-slider">
-          <div class="rating-scale-helper" id="study-slider-endpoints"><span>1 · לוז חופשי</span><span>10 · אינטנסיבי וממוקד הישגים</span></div>
-          <input id="study-slider" type="range" min="1" max="10" step="1" value="${escapeHtml(selectedOptionId || '5')}" aria-label="סגנון למידה מ-1 עד 10" aria-describedby="study-slider-endpoints" />
+          <div class="rating-scale-helper" id="study-slider-endpoints"><span>לוז חופשי</span><span>אינטנסיבי וממוקד הישגים</span></div>
+          <input id="study-slider" type="range" min="1" max="10" step="1" value="${escapeHtml(selectedOptionId || '5')}" aria-label="סגנון למידה: 1 לוז חופשי, 10 אינטנסיבי וממוקד הישגים" aria-describedby="study-slider-endpoints" />
           <output id="study-slider-value" for="study-slider">${escapeHtml(selectedOptionId || '5')}</output>
         </div>
       ` : `<div class="option-grid ${isRating ? 'rating-option-grid' : ''} ${question.type === 'category' ? 'category-option-grid' : ''}" role="list">
