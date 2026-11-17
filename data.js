@@ -11,7 +11,7 @@ window.APP_DATA = {
     { id: 'classic_study', label: 'אופי הלימוד', description: '(גבוה - שיטת לימוד קלאסית)' },
     { id: 'personal_attention', label: 'יחס אישי', description: '(גבוה - יחס אישי גבוה וישיבה קטנה)' },
     { id: 'physical_conditions', label: 'ת"ש', description: '(גבוה - תנאים טובים)' },
-    { id: 'rambamizem', label: 'רמבמיסטית / חסידית', description: 'סגנון הישיבה', weight: 4 },
+    { id: 'rambamizem', label: 'רמבמיסטית / חסידית', description: 'סגנון הישיבה', weight: 2 },
     { id: 'intanse_study', label: 'סגנון למידה', description: 'לוז חופשי;אינטנסיבי וממוקד הישגים', weight: 1 }
   ],
   questions: [
