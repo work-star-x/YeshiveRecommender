@@ -537,10 +537,13 @@ const MAHANAYIM_THRESHOLDS = {
 const MAHANAYIM_BONUS = 5;
 function computeScores(limit = 3) {
   const userProfile = buildUserProfile();
+  const overlappingAreas = ['ירושלים והסביבה', 'יהודה ושומרון'];
 
   return appData.yeshivot
     .filter((yeshiva) => state.preferredAreaGroups.length === 0
-      || state.preferredAreaGroups.includes(yeshiva.areaGroup))
+      || state.preferredAreaGroups.includes(yeshiva.areaGroup)
+      || (overlappingAreas.includes(yeshiva.areaGroup)
+        && state.preferredAreaGroups.some((area) => overlappingAreas.includes(area))))
     .map((yeshiva) => {
       let weightedDistance = 0;
       let totalWeight = 0;

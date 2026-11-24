@@ -41,4 +41,26 @@ for (const answer of ['1', '2', '3', '4', 'unknown']) {
   }
 }
 
+run(`
+  appData.yeshivot = [
+    { id: 'jerusalem', name: 'jerusalem', areaGroup: 'ירושלים והסביבה', profileTags: { military: 10, rambamizem: 1 } },
+    { id: 'judea', name: 'judea', areaGroup: 'יהודה ושומרון', profileTags: { military: 10, rambamizem: 1 } },
+    { id: 'north', name: 'north', areaGroup: 'צפון', profileTags: { military: 10, rambamizem: 1 } },
+    { id: 'none', name: 'none', areaGroup: '', profileTags: { military: 10, rambamizem: 1 } }
+  ];
+  state.answers.q16 = '1';
+`);
+
+for (const area of ['ירושלים והסביבה', 'יהודה ושומרון']) {
+  run(`state.preferredAreaGroups = ['${area}']`);
+  assert.equal(run("computeScores(10).map(y => y.id).join(',')"), 'jerusalem,judea');
+  assert.equal(run("computeScores(10).map(y => y.score).join(',')"), '100,100');
+}
+run("state.preferredAreaGroups = ['צפון']");
+assert.equal(run("computeScores(10).map(y => y.id).join(',')"), 'north');
+run("state.preferredAreaGroups = ['צפון', 'יהודה ושומרון']");
+assert.equal(run("computeScores(10).map(y => y.id).join(',')"), 'jerusalem,judea,north');
+run('state.preferredAreaGroups = []');
+assert.equal(run("computeScores(10).map(y => y.id).join(',')"), 'jerusalem,judea,north,none');
+
 console.log('Category matching tests passed.');
