@@ -337,8 +337,8 @@ function renderWelcome() {
   root.innerHTML = `
     <section class="welcome-panel">
       <span class="welcome-kicker">2 דקות ו...</span>
-      <h2>נמצא את הישיבה<br />שלך</h2>
-      <p>מתלבט לאיזו ישיבה או שבוש ללכת? ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
+      <h2>נמצא את הישיבה שלך</h2>
+      <p>מתלבט איפה לעשות שבוש? ענה על מספר שאלות קצרות, ותקבל המלצות מותאמות בדיוק אליך. (בלי נדר בכפוף לתנאי המבצע)</p>
       <fieldset class="area-preference-control">
         <legend>בחר אזורי לימוד:  </legend>
         <div class="area-options">
