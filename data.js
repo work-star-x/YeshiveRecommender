@@ -1,6 +1,6 @@
 window.APP_DATA = {
   app: {
-    title: 'ישיבומטר',
+    title: 'ישיבמטר',
     subtitle: 'מצא את הישיבה שמתאימה לך'
   },
   parameters: [
