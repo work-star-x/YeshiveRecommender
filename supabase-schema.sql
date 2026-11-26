@@ -199,8 +199,9 @@ begin
     from public.site_content
     where id = 'main';
 
-    if expected_yeshiva_count is null or jsonb_array_length(p_results) <> expected_yeshiva_count then
-      raise exception 'Completion results do not match the current yeshiva list.';
+    if expected_yeshiva_count is null or jsonb_array_length(p_results) = 0
+      or jsonb_array_length(p_results) > expected_yeshiva_count then
+      raise exception 'Completion results must be a non-empty subset of the current yeshiva list.';
     end if;
     if p_profile is not null then
       if jsonb_typeof(p_profile) is distinct from 'object' then
